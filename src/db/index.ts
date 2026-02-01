@@ -2,6 +2,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL!;
-const client = postgres(connectionString);
-export const db = drizzle(client, { schema });
+// Only connect if DATABASE_URL is available
+const connectionString = process.env.DATABASE_URL || "";
+
+export const db = connectionString 
+  ? drizzle(postgres(connectionString), { schema })
+  : null;
