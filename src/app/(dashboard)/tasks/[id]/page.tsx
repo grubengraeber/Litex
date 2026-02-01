@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChatPanel, type ChatMessage } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
@@ -106,8 +106,8 @@ function formatDate(date: Date): string {
   });
 }
 
-export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function TaskDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { isEmployee, isCustomer, permissions } = useRole();
   const [task, setTask] = useState(mockTask);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
@@ -147,9 +147,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 space-y-6 overflow-auto">
+      <div className="flex-1 min-w-0 space-y-4 lg:space-y-6 overflow-auto order-2 lg:order-1">
         {/* Back & Actions */}
         <div className="flex items-center justify-between">
           <Link href="/tasks">
@@ -438,12 +438,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Task Chat - Kommentare mit Autor und Timestamp */}
-      <ChatPanel 
-        title="KOMMENTARE" 
-        taskId={id}
-        messages={taskMessages}
-      />
+      {/* Task Chat - Hidden on mobile */}
+      <div className="hidden lg:block order-2 w-80 xl:w-96 flex-shrink-0">
+        <ChatPanel 
+          title="KOMMENTARE" 
+          taskId={id}
+          messages={taskMessages}
+        />
+      </div>
     </div>
   );
 }

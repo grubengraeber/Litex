@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,8 @@ const mockTask = {
   companyId: "c1",
 };
 
-export default function TaskEditPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function TaskEditPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
   
   const [formData, setFormData] = useState({
