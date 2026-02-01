@@ -164,16 +164,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Einstellungen">
-              <Link href="/settings">
-                <Settings />
-                <span>Einstellungen</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {/* Footer bleibt leer - Einstellungen sind bereits in der Navigation */}
       </SidebarFooter>
 
       <SidebarRail />
