@@ -1,10 +1,11 @@
-import NextAuth, { type NextAuthConfig } from "next-auth";
+import NextAuth from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db";
 import { users, authCodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
+import { authConfig } from "./auth.config";
 
 // Generate 6-digit code
 function generateCode(): string {
@@ -22,7 +23,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const authConfig: NextAuthConfig = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: db ? DrizzleAdapter(db) : undefined,
   providers: [
     EmailProvider({
@@ -104,6 +106,7 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async session({ session, user }) {
       if (!db) return session;
       
@@ -136,14 +139,7 @@ export const authConfig: NextAuthConfig = {
       return true;
     },
   },
-  pages: {
-    signIn: "/login",
-    verifyRequest: "/verify",
-    error: "/error",
-  },
   session: {
     strategy: "database",
   },
-};
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+});
