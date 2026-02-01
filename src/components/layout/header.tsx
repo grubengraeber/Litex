@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
@@ -10,17 +10,20 @@ import { Search, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
-  showMonthFilter?: boolean;
 }
 
-export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
+export function Header({ onMonthChange }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMonth = new Date().getMonth();
   const currentMonthKey = MONTHS[currentMonth].key;
   
   const activeMonthKey = searchParams.get("month") || currentMonthKey;
   const [showAllMonths, setShowAllMonths] = useState(false);
+  
+  // Monatsauswahl nur auf Dashboard und Aufgaben zeigen
+  const showMonthFilter = pathname === "/dashboard" || pathname.startsWith("/tasks");
 
   const handleMonthClick = (monthKey: string) => {
     const params = new URLSearchParams(searchParams.toString());
