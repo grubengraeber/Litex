@@ -1,22 +1,39 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Paperclip, Send, File, X } from "lucide-react";
+import { 
+  ChevronDown, 
+  Paperclip, 
+  Send, 
+  File, 
+  X, 
+  Check, 
+  CheckCheck,
+  Loader2 
+} from "lucide-react";
+
+export interface MessageRead {
+  userId: string;
+  userName: string | null;
+  readAt: Date | null;
+}
 
 export interface ChatMessage {
   id: string;
   content: string;
   sender: {
-    name: string;
+    id?: string;
+    name: string | null;
     avatar?: string;
     initials: string;
     isCurrentUser: boolean;
   };
-  timestamp: Date;
+  timestamp?: Date;
+  createdAt?: Date | null;
   attachments?: {
     id: string;
     name: string;
@@ -24,6 +41,7 @@ export interface ChatMessage {
     size: string;
     status?: "pending" | "approved" | "rejected";
   }[];
+  reads?: MessageRead[];
 }
 
 interface ChatPanelProps {
@@ -33,14 +51,16 @@ interface ChatPanelProps {
   onSendMessage?: (content: string, attachments?: File[]) => void;
 }
 
-function formatTimestamp(date: Date): string {
+function formatTimestamp(date: Date | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
   const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
+  const isToday = d.toDateString() === now.toDateString();
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
+  const isYesterday = d.toDateString() === yesterday.toDateString();
 
-  const timeStr = date.toLocaleTimeString("de-DE", { 
+  const timeStr = d.toLocaleTimeString("de-DE", { 
     hour: "2-digit", 
     minute: "2-digit" 
   });
@@ -50,37 +70,13 @@ function formatTimestamp(date: Date): string {
   } else if (isYesterday) {
     return `Gestern, ${timeStr}`;
   } else {
-    return `${date.toLocaleDateString("de-DE", { 
+    return `${d.toLocaleDateString("de-DE", { 
       day: "2-digit", 
       month: "2-digit",
       year: "numeric"
     })}, ${timeStr}`;
   }
 }
-
-const defaultMessages: ChatMessage[] = [
-  {
-    id: "1",
-    content: "Ich habe den Beleg hochgeladen. Bitte prüfen.",
-    sender: { name: "Max Mustermann", initials: "MM", isCurrentUser: false },
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    attachments: [
-      { id: "a1", name: "Rechnung_2025_001.pdf", type: "pdf", size: "245 KB", status: "pending" }
-    ]
-  },
-  {
-    id: "2",
-    content: "Danke! Ich schaue mir das gleich an.",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
-  },
-  {
-    id: "3",
-    content: "Der Beleg wurde freigegeben. ✓",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 min ago
-  },
-];
 
 const FILE_STATUS_STYLES = {
   pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -95,27 +91,92 @@ const FILE_STATUS_LABELS = {
 };
 
 export function ChatPanel({ 
-  title = "TEAM CHAT", 
+  title = "KOMMENTARE", 
   taskId,
-  messages = defaultMessages,
+  messages: initialMessages,
   onSendMessage 
 }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [message, setMessage] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages || []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load messages from API
+  const loadMessages = useCallback(async () => {
+    if (!taskId) return;
+    
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/tasks/${taskId}/messages`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data.messages || []);
+        
+        // Mark messages as read
+        for (const msg of data.messages || []) {
+          if (!msg.sender.isCurrentUser) {
+            fetch(`/api/messages/${msg.id}/read`, { method: "POST" });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load messages:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [taskId]);
+
+  // Initial load
+  useEffect(() => {
+    if (taskId && !initialMessages) {
+      loadMessages();
+    }
+  }, [taskId, initialMessages, loadMessages]);
+
+  // Polling for new messages (every 5 seconds)
+  useEffect(() => {
+    if (!taskId) return;
+    
+    const interval = setInterval(loadMessages, 5000);
+    return () => clearInterval(interval);
+  }, [taskId, loadMessages]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
-    if (message.trim() || pendingFiles.length > 0) {
+  const handleSend = async () => {
+    if (!message.trim() && pendingFiles.length === 0) return;
+    if (!taskId) {
       onSendMessage?.(message, pendingFiles);
       setMessage("");
       setPendingFiles([]);
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const res = await fetch(`/api/tasks/${taskId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: message.trim() }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [...prev, data.message]);
+        setMessage("");
+        setPendingFiles([]);
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -133,13 +194,11 @@ export function ChatPanel({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      // Only allow PDF and images
       const validFiles = Array.from(files).filter(file => 
         file.type === "application/pdf" || file.type.startsWith("image/")
       );
       setPendingFiles([...pendingFiles, ...validFiles]);
     }
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -149,16 +208,36 @@ export function ChatPanel({
     setPendingFiles(pendingFiles.filter((_, i) => i !== index));
   };
 
+  // Read status component - WhatsApp style ✓ ✓✓
+  const ReadStatus = ({ msg }: { msg: ChatMessage }) => {
+    if (!msg.sender.isCurrentUser) return null;
+    
+    const reads = msg.reads || [];
+    const hasBeenRead = reads.length > 0;
+    
+    return (
+      <span className="ml-1 inline-flex items-center" title={
+        hasBeenRead 
+          ? `Gelesen von: ${reads.map(r => r.userName || "Unbekannt").join(", ")}` 
+          : "Gesendet"
+      }>
+        {hasBeenRead ? (
+          <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+        ) : (
+          <Check className="w-3.5 h-3.5 text-slate-400" />
+        )}
+      </span>
+    );
+  };
+
   return (
-    <div className="w-80 bg-white border-l border-slate-200 flex flex-col h-full">
+    <div className="w-full lg:w-80 bg-white border-l border-slate-200 flex flex-col h-full">
       {/* Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0"
       >
-        <span className="font-semibold">
-          {taskId ? "KOMMENTARE" : title}
-        </span>
+        <span className="font-semibold">{title}</span>
         <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
       </button>
 
@@ -166,10 +245,14 @@ export function ChatPanel({
         <>
           {/* Messages */}
           <div className="flex-1 overflow-auto p-4 space-y-4">
-            {messages.length === 0 ? (
+            {isLoading && messages.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+              </div>
+            ) : messages.length === 0 ? (
               <div className="text-center text-slate-400 py-8">
                 <p className="text-sm">Noch keine Kommentare</p>
-                <p className="text-xs mt-1">Schreiben Sie eine Nachricht oder laden Sie einen Beleg hoch.</p>
+                <p className="text-xs mt-1">Schreiben Sie eine Nachricht.</p>
               </div>
             ) : (
               messages.map((msg) => (
@@ -192,7 +275,7 @@ export function ChatPanel({
                     {/* Sender name */}
                     {!msg.sender.isCurrentUser && (
                       <span className="text-xs text-slate-500 font-medium">
-                        {msg.sender.name}
+                        {msg.sender.name || "Unbekannt"}
                       </span>
                     )}
                     
@@ -237,12 +320,13 @@ export function ChatPanel({
                       </div>
                     )}
                     
-                    {/* Timestamp */}
+                    {/* Timestamp + Read Status */}
                     <span className={cn(
-                      "text-[10px] text-slate-400",
-                      msg.sender.isCurrentUser && "text-right"
+                      "text-[10px] text-slate-400 flex items-center",
+                      msg.sender.isCurrentUser && "justify-end"
                     )}>
-                      {formatTimestamp(msg.timestamp)}
+                      {formatTimestamp(msg.createdAt || msg.timestamp)}
+                      <ReadStatus msg={msg} />
                     </span>
                   </div>
                 </div>
@@ -284,6 +368,7 @@ export function ChatPanel({
                 onKeyDown={handleKeyDown}
                 placeholder="Kommentar schreiben..."
                 className="flex-1"
+                disabled={isSending}
               />
               <input
                 ref={fileInputRef}
@@ -298,6 +383,7 @@ export function ChatPanel({
                 size="icon"
                 onClick={handleFileSelect}
                 title="Beleg hochladen (PDF, Bilder)"
+                disabled={isSending}
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -305,15 +391,16 @@ export function ChatPanel({
                 size="icon" 
                 className="bg-blue-600 hover:bg-blue-700"
                 onClick={handleSend}
-                disabled={!message.trim() && pendingFiles.length === 0}
+                disabled={(!message.trim() && pendingFiles.length === 0) || isSending}
                 title="Senden"
               >
-                <Send className="w-4 h-4" />
+                {isSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              PDF und Bilder erlaubt • Belege werden zur Freigabe eingereicht
-            </p>
           </div>
         </>
       )}

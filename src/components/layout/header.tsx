@@ -7,6 +7,7 @@ import { MONTHS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { Search, Upload, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
 interface HeaderProps {
@@ -83,6 +84,9 @@ export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
             className="pl-8 w-40 h-8"
           />
         </div>
+
+        {/* Notification Bell */}
+        <NotificationBell />
 
         {/* User Avatar */}
         <Avatar className="w-8 h-8 cursor-pointer">
