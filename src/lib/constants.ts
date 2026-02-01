@@ -14,42 +14,73 @@ export const MONTHS = [
   { short: "DEZ", full: "Dezember", key: "12" },
 ] as const;
 
-// Task status from schema
-export const TASK_STATUS_LABELS = {
-  open: "Offen",
-  submitted: "Eingereicht",
-  completed: "Erledigt",
+// Task status workflow: Offen → Eingereicht → Erledigt
+export const TASK_STATUS = {
+  open: {
+    label: "Offen",
+    color: "bg-slate-100 text-slate-700",
+    description: "Wartet auf Bearbeitung durch Kunden",
+  },
+  submitted: {
+    label: "Eingereicht",
+    color: "bg-blue-100 text-blue-700",
+    description: "Vom Kunden eingereicht, wartet auf Prüfung",
+  },
+  completed: {
+    label: "Erledigt",
+    color: "bg-green-100 text-green-700",
+    description: "Abgeschlossen durch Mitarbeiter",
+  },
 } as const;
 
-// Traffic light system (Ampel)
-// 🟡 Gelb: Nicht bearbeitet (Standard)
-// 🟢 Grün: Bearbeitet (Kommentar oder Beleg vorhanden)
-// 🔴 Rot: Überfällig (75-Tage-Frist überschritten)
+export type TaskStatus = keyof typeof TASK_STATUS;
+
+// Traffic light system (Ampel) - basiert auf ALTER in Tagen
+// 🟢 Grün: Neu (0-30 Tage)
+// 🟡 Gelb: >30 Tage
+// 🔴 Rot: >60 Tage
 export const TRAFFIC_LIGHT_CONFIG = {
-  yellow: {
-    label: "Nicht bearbeitet",
-    color: "bg-yellow-500",
-    bgLight: "bg-yellow-100",
-    text: "text-yellow-800",
-    description: "Noch keine Aktion durchgeführt",
-  },
   green: {
-    label: "Bearbeitet",
+    label: "Neu",
     color: "bg-green-500",
     bgLight: "bg-green-100",
     text: "text-green-800",
-    description: "Kommentar oder Beleg vorhanden",
+    description: "Weniger als 30 Tage alt",
+    maxDays: 30,
+  },
+  yellow: {
+    label: "Warnung",
+    color: "bg-yellow-500",
+    bgLight: "bg-yellow-100",
+    text: "text-yellow-800",
+    description: "Älter als 30 Tage",
+    maxDays: 60,
   },
   red: {
-    label: "Überfällig",
+    label: "Dringend",
     color: "bg-red-500",
     bgLight: "bg-red-100",
     text: "text-red-800",
-    description: "75-Tage-Frist überschritten",
+    description: "Älter als 60 Tage",
+    maxDays: Infinity,
   },
 } as const;
 
 export type TrafficLight = keyof typeof TRAFFIC_LIGHT_CONFIG;
+
+// Calculate traffic light based on days since creation
+export function calculateTrafficLight(daysSinceCreation: number): TrafficLight {
+  if (daysSinceCreation <= 30) return "green";
+  if (daysSinceCreation <= 60) return "yellow";
+  return "red";
+}
+
+// Traffic light sort priority (red first = highest priority)
+export const TRAFFIC_LIGHT_PRIORITY: Record<TrafficLight, number> = {
+  red: 0,    // Höchste Priorität
+  yellow: 1,
+  green: 2,  // Niedrigste Priorität
+};
 
 // User roles
 export type UserRole = "customer" | "employee";
@@ -65,46 +96,39 @@ export const ROLE_PERMISSIONS = {
     canSeeAllTasks: false,      // Nur eigene Aufgaben
     canSeeAllCompanies: false,  // Nur eigene Firma
     canSeeTeam: false,          // Kein Team-Zugriff
-    canApproveFiles: false,     // Kann keine Belege freigeben
+    canSubmitTask: true,        // Kann "Einreichen"
+    canCompleteTask: false,     // Kann nicht "Abschließen"
+    canReturnTask: false,       // Kann nicht "Zurück an Kunde"
+    canInviteUsers: false,      // Kann keine Benutzer einladen
+    canUploadFiles: true,       // Kann Belege hochladen
+    canComment: true,           // Kann kommentieren
   },
   employee: {
     canSeeAllTasks: true,       // Alle Aufgaben
     canSeeAllCompanies: true,   // Alle Mandanten
     canSeeTeam: true,           // Team-Zugriff
-    canApproveFiles: true,      // Kann Belege freigeben
+    canSubmitTask: false,       // Nicht "Einreichen"
+    canCompleteTask: true,      // Kann "Abschließen"
+    canReturnTask: true,        // Kann "Zurück an Kunde"
+    canInviteUsers: true,       // Kann Benutzer einladen
+    canUploadFiles: true,       // Kann Belege hochladen
+    canComment: true,           // Kann kommentieren
   },
 } as const;
 
-// File upload status
-export const FILE_STATUS = {
-  pending: {
-    label: "Hochgeladen",
-    description: "Wartet auf Freigabe",
-    color: "bg-yellow-100 text-yellow-800",
-  },
-  approved: {
-    label: "Freigegeben",
-    description: "Von Mitarbeiter bestätigt",
-    color: "bg-green-100 text-green-800",
-  },
-  rejected: {
-    label: "Abgelehnt",
-    description: "Bitte erneut hochladen",
-    color: "bg-red-100 text-red-800",
-  },
+// File upload config
+export const FILE_UPLOAD_CONFIG = {
+  maxSizeMB: 10,
+  acceptedTypes: ["application/pdf", "image/jpeg", "image/png"],
+  acceptedExtensions: ".pdf,.jpg,.jpeg,.png",
 } as const;
 
-export type FileStatus = keyof typeof FILE_STATUS;
-
-// Filter options
+// Filter options for sidebar
 export const FILTER_OPTIONS = [
   { key: "all", label: "Alle", icon: "Filter" },
-  { key: "this-week", label: "Diese Woche", icon: "Calendar" },
-  { key: "yellow", label: "Nicht bearbeitet", icon: "Circle" },
-  { key: "green", label: "Bearbeitet", icon: "CheckCircle" },
-  { key: "red", label: "Überfällig", icon: "AlertCircle" },
+  { key: "open", label: "Offen", icon: "Circle" },
+  { key: "submitted", label: "Eingereicht", icon: "Clock" },
   { key: "completed", label: "Erledigt", icon: "CheckCircle2" },
+  { key: "red", label: "Dringend (>60 Tage)", icon: "AlertCircle", color: "text-red-500" },
+  { key: "yellow", label: "Warnung (>30 Tage)", icon: "AlertTriangle", color: "text-yellow-500" },
 ] as const;
-
-// 75-day deadline for overdue calculation
-export const OVERDUE_DAYS = 75;

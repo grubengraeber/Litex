@@ -8,12 +8,14 @@ import {
   Users,
   Settings,
   Filter,
-  Calendar,
   Circle,
+  Clock,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   FileText,
   Building2,
+  UserPlus,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
 
@@ -46,21 +48,21 @@ const customerNavigation = [
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
-// Filters based on traffic light system
+// Filters based on status workflow and traffic light
 const filters = [
   { name: "Alle", icon: Filter, count: 24, filter: "all" },
-  { name: "Diese Woche", icon: Calendar, count: 8, filter: "this-week" },
-  { name: "Nicht bearbeitet", icon: Circle, count: 5, filter: "yellow", color: "text-yellow-500" },
-  { name: "Bearbeitet", icon: CheckCircle2, count: 12, filter: "green", color: "text-green-500" },
-  { name: "Überfällig", icon: AlertCircle, count: 3, filter: "red", color: "text-red-500" },
-  { name: "Erledigt", icon: CheckCircle2, count: 10, filter: "completed", color: "text-slate-400" },
+  { name: "Offen", icon: Circle, count: 8, filter: "open" },
+  { name: "Eingereicht", icon: Clock, count: 5, filter: "submitted" },
+  { name: "Erledigt", icon: CheckCircle2, count: 10, filter: "completed" },
+  { name: "Dringend (>60 Tage)", icon: AlertCircle, count: 3, filter: "red", color: "text-red-500" },
+  { name: "Warnung (>30 Tage)", icon: AlertTriangle, count: 5, filter: "yellow", color: "text-yellow-500" },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFilter = searchParams.get("filter") || "all";
-  const { isEmployee } = useRole();
+  const { isEmployee, permissions } = useRole();
 
   const navigation = isEmployee ? employeeNavigation : customerNavigation;
 
@@ -119,7 +121,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Filters - Ampel-System */}
+        {/* Filters - Status Workflow + Ampel */}
         <SidebarGroup>
           <SidebarGroupLabel>Aufgaben-Filter</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -142,6 +144,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Quick Actions for Employees */}
+        {isEmployee && permissions.canInviteUsers && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Benutzer einladen">
+                    <UserPlus />
+                    <span>Benutzer einladen</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

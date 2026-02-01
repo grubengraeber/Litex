@@ -1,21 +1,23 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { TaskCard } from "@/components/tasks/task-card";
+import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
 import { ChatPanel } from "@/components/layout/chat-panel";
-import { MONTHS, type TrafficLight } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
+import { MONTHS, calculateTrafficLight, type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
+import { Building2, ChevronDown } from "lucide-react";
 
-// Mock data with traffic light system
+// Mock data with proper dates for traffic light calculation
 const allTasks = [
   {
     id: "1",
     title: "Kunden-Rechnungen Q1",
     description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal.",
     dueDate: "15. Feb",
-    trafficLight: "green" as TrafficLight, // Hat Kommentare/Belege
-    progress: 65,
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago - GREEN
+    status: "open" as TaskStatus,
     assignee: { name: "Thomas", initials: "TS" },
     commentCount: 3,
     fileCount: 2,
@@ -29,8 +31,8 @@ const allTasks = [
     title: "Kontoauszüge abstimmen",
     description: "Monatliche Abstimmung der Bankkonten mit den Buchungen.",
     dueDate: "15. Feb",
-    trafficLight: "yellow" as TrafficLight, // Nicht bearbeitet
-    progress: 0,
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago - YELLOW
+    status: "open" as TaskStatus,
     assignee: { name: "Anna", initials: "AM" },
     commentCount: 0,
     fileCount: 0,
@@ -44,11 +46,11 @@ const allTasks = [
     title: "Steuerunterlagen vorbereiten",
     description: "Zusammenstellung aller relevanten Steuerunterlagen für die Abgabe.",
     dueDate: "15. Feb",
-    trafficLight: "yellow" as TrafficLight,
-    progress: 0,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago - GREEN
+    status: "submitted" as TaskStatus,
     assignee: { name: "Maria", initials: "MM" },
-    commentCount: 0,
-    fileCount: 0,
+    commentCount: 2,
+    fileCount: 1,
     period: "02",
     companyId: "c2",
     companyName: "Beispiel AG",
@@ -59,8 +61,8 @@ const allTasks = [
     title: "Spesenberichte prüfen",
     description: "Überprüfung und Genehmigung der eingereichten Spesenberichte.",
     dueDate: "15. Feb",
-    trafficLight: "red" as TrafficLight, // Überfällig (>75 Tage)
-    progress: 0,
+    createdAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000), // 70 days ago - RED
+    status: "open" as TaskStatus,
     assignee: { name: "Thomas", initials: "TS" },
     commentCount: 0,
     fileCount: 0,
@@ -74,8 +76,8 @@ const allTasks = [
     title: "Jahresabschluss vorbereiten",
     description: "Vorarbeiten für den Jahresabschluss zusammenstellen.",
     dueDate: "28. Feb",
-    trafficLight: "green" as TrafficLight,
-    progress: 55,
+    createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), // 35 days ago - YELLOW
+    status: "submitted" as TaskStatus,
     assignee: { name: "Anna", initials: "AM" },
     commentCount: 2,
     fileCount: 1,
@@ -89,8 +91,8 @@ const allTasks = [
     title: "Lohnabrechnung März",
     description: "Vorbereitung der monatlichen Lohnabrechnungen.",
     dueDate: "1. Mär",
-    trafficLight: "green" as TrafficLight,
-    progress: 80,
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago - GREEN
+    status: "completed" as TaskStatus,
     assignee: { name: "Maria", initials: "MM" },
     commentCount: 1,
     fileCount: 3,
@@ -101,12 +103,22 @@ const allTasks = [
   },
 ];
 
+// Mock companies for dropdown
+const companies = [
+  { id: "all", name: "Alle Mandanten" },
+  { id: "c1", name: "Mustermann GmbH" },
+  { id: "c2", name: "Beispiel AG" },
+  { id: "c3", name: "Test & Partner KG" },
+];
+
 // Simulated current user's company (for customer role)
 const CURRENT_USER_COMPANY_ID = "c1";
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const { isEmployee, isCustomer } = useRole();
+  const [selectedCompany, setSelectedCompany] = useState("all");
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   
   const currentMonth = new Date().getMonth();
   const currentMonthKey = MONTHS[currentMonth].key;
@@ -114,67 +126,123 @@ function DashboardContent() {
   
   const activeMonth = MONTHS.find(m => m.key === activeMonthKey) || MONTHS[currentMonth];
   
-  // Filter tasks: 
-  // - By month
-  // - Customer: only their company's tasks
-  // - Employee: all tasks
-  const filteredTasks = allTasks.filter(task => {
-    // Month filter
-    if (task.period !== activeMonthKey) return false;
-    
-    // Role-based filter: Customers only see their own tasks
-    if (isCustomer && task.companyId !== CURRENT_USER_COMPANY_ID) {
-      return false;
-    }
-    
-    return true;
-  });
+  // Filter and sort tasks
+  const filteredTasks = useMemo(() => {
+    const tasks = allTasks.filter(task => {
+      // Month filter
+      if (task.period !== activeMonthKey) return false;
+      
+      // Role-based filter: Customers only see their own tasks
+      if (isCustomer && task.companyId !== CURRENT_USER_COMPANY_ID) {
+        return false;
+      }
+      
+      // Company filter for employees
+      if (isEmployee && selectedCompany !== "all" && task.companyId !== selectedCompany) {
+        return false;
+      }
+      
+      // Don't show completed in main view
+      if (task.status === "completed") return false;
+      
+      return true;
+    });
+
+    // Sort by priority (red first = oldest first)
+    return sortTasksByPriority(tasks);
+  }, [activeMonthKey, isCustomer, isEmployee, selectedCompany]);
 
   // Stats for overview
-  const stats = {
-    total: filteredTasks.length,
-    yellow: filteredTasks.filter(t => t.trafficLight === "yellow").length,
-    green: filteredTasks.filter(t => t.trafficLight === "green").length,
-    red: filteredTasks.filter(t => t.trafficLight === "red").length,
-  };
+  const stats = useMemo(() => {
+    const green = filteredTasks.filter(t => {
+      const days = Math.floor((Date.now() - t.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      return calculateTrafficLight(days) === "green";
+    }).length;
+    const yellow = filteredTasks.filter(t => {
+      const days = Math.floor((Date.now() - t.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      return calculateTrafficLight(days) === "yellow";
+    }).length;
+    const red = filteredTasks.filter(t => {
+      const days = Math.floor((Date.now() - t.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      return calculateTrafficLight(days) === "red";
+    }).length;
+
+    return { total: filteredTasks.length, green, yellow, red };
+  }, [filteredTasks]);
 
   return (
     <div className="flex h-full gap-6">
       {/* Main Content */}
       <div className="flex-1 min-w-0">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {activeMonth.full.toUpperCase()} AUFGABEN
-          </h1>
-          <p className="text-slate-500 mt-1">
-            {isCustomer ? "Ihre offenen Aufgaben" : "Alle Mandantenaufgaben verwalten"}
-          </p>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {activeMonth.full.toUpperCase()} AUFGABEN
+            </h1>
+            <p className="text-slate-500 mt-1">
+              {isCustomer ? "Ihre offenen Aufgaben" : "Alle Mandantenaufgaben verwalten"}
+            </p>
+          </div>
+
+          {/* Company Filter Dropdown (only for employees) */}
+          {isEmployee && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+                className="min-w-48"
+              >
+                <Building2 className="w-4 h-4 mr-2" />
+                {companies.find(c => c.id === selectedCompany)?.name}
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+              
+              {showCompanyDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
+                  {companies.map(company => (
+                    <button
+                      key={company.id}
+                      onClick={() => {
+                        setSelectedCompany(company.id);
+                        setShowCompanyDropdown(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
+                        selectedCompany === company.id ? "bg-blue-50 text-blue-700" : ""
+                      }`}
+                    >
+                      {company.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Stats Bar */}
+        {/* Stats Bar - Ampel Legende */}
         <div className="flex gap-4 mb-6">
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
             <span className="text-sm text-slate-600">Gesamt:</span>
             <span className="font-semibold">{stats.total}</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg">
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-            <span className="text-sm text-yellow-700">Nicht bearbeitet:</span>
-            <span className="font-semibold text-yellow-700">{stats.yellow}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg" title="Neu (0-30 Tage)">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-            <span className="text-sm text-green-700">Bearbeitet:</span>
+            <span className="text-sm text-green-700">Neu:</span>
             <span className="font-semibold text-green-700">{stats.green}</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg" title="Warnung (>30 Tage)">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+            <span className="text-sm text-yellow-700">&gt;30 Tage:</span>
+            <span className="font-semibold text-yellow-700">{stats.yellow}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg" title="Dringend (>60 Tage)">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span className="text-sm text-red-700">Überfällig:</span>
+            <span className="text-sm text-red-700">&gt;60 Tage:</span>
             <span className="font-semibold text-red-700">{stats.red}</span>
           </div>
         </div>
 
-        {/* Task Grid */}
+        {/* Task Grid - sorted by priority (red first) */}
         {filteredTasks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredTasks.map((task) => (
@@ -184,8 +252,8 @@ function DashboardContent() {
                 title={task.title}
                 description={task.description}
                 dueDate={task.dueDate}
-                trafficLight={task.trafficLight}
-                progress={task.progress}
+                createdAt={task.createdAt}
+                status={task.status}
                 assignee={task.assignee}
                 commentCount={task.commentCount}
                 fileCount={task.fileCount}
@@ -200,10 +268,13 @@ function DashboardContent() {
               <span className="text-2xl">📋</span>
             </div>
             <h3 className="text-lg font-medium text-slate-700">
-              Keine Aufgaben für {activeMonth.full}
+              Keine offenen Aufgaben für {activeMonth.full}
             </h3>
             <p className="text-slate-500 mt-1">
-              Wählen Sie einen anderen Monat.
+              {isEmployee && selectedCompany !== "all" 
+                ? "Wählen Sie einen anderen Mandanten oder Monat."
+                : "Wählen Sie einen anderen Monat."
+              }
             </p>
           </div>
         )}

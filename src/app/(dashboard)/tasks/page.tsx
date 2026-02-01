@@ -1,23 +1,23 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { TaskCard } from "@/components/tasks/task-card";
+import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MONTHS, FILTER_OPTIONS, type TrafficLight } from "@/lib/constants";
+import { MONTHS, FILTER_OPTIONS, calculateTrafficLight, type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
-import { Plus, Search, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Building2, ChevronDown } from "lucide-react";
 
-// Mock data with traffic light system
+// Mock data with proper dates
 const allTasks = [
   {
     id: "1",
     title: "Kunden-Rechnungen Q1",
     description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal.",
     dueDate: "15. Feb",
-    trafficLight: "green" as TrafficLight,
-    progress: 65,
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days - GREEN
+    status: "open" as TaskStatus,
     assignee: { name: "Thomas", initials: "TS" },
     commentCount: 3,
     fileCount: 2,
@@ -25,15 +25,14 @@ const allTasks = [
     companyId: "c1",
     companyName: "Mustermann GmbH",
     amount: "12.450,00",
-    isCompleted: false,
   },
   {
     id: "2",
     title: "Kontoauszüge abstimmen",
     description: "Monatliche Abstimmung der Bankkonten mit den Buchungen.",
     dueDate: "15. Feb",
-    trafficLight: "yellow" as TrafficLight,
-    progress: 0,
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days - YELLOW
+    status: "open" as TaskStatus,
     assignee: { name: "Anna", initials: "AM" },
     commentCount: 0,
     fileCount: 0,
@@ -41,31 +40,29 @@ const allTasks = [
     companyId: "c1",
     companyName: "Mustermann GmbH",
     amount: "0,00",
-    isCompleted: false,
   },
   {
     id: "3",
     title: "Steuerunterlagen vorbereiten",
     description: "Zusammenstellung aller relevanten Steuerunterlagen für die Abgabe.",
     dueDate: "15. Feb",
-    trafficLight: "yellow" as TrafficLight,
-    progress: 0,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days - GREEN
+    status: "submitted" as TaskStatus,
     assignee: { name: "Maria", initials: "MM" },
-    commentCount: 0,
-    fileCount: 0,
+    commentCount: 2,
+    fileCount: 1,
     period: "02",
     companyId: "c2",
     companyName: "Beispiel AG",
     amount: "0,00",
-    isCompleted: false,
   },
   {
     id: "4",
     title: "Spesenberichte prüfen",
     description: "Überprüfung und Genehmigung der eingereichten Spesenberichte.",
     dueDate: "15. Feb",
-    trafficLight: "red" as TrafficLight,
-    progress: 0,
+    createdAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000), // 70 days - RED
+    status: "open" as TaskStatus,
     assignee: { name: "Thomas", initials: "TS" },
     commentCount: 0,
     fileCount: 0,
@@ -73,15 +70,14 @@ const allTasks = [
     companyId: "c1",
     companyName: "Mustermann GmbH",
     amount: "1.234,56",
-    isCompleted: false,
   },
   {
     id: "5",
     title: "Jahresabschluss 2024",
     description: "Abgeschlossener Jahresabschluss für das Geschäftsjahr 2024.",
     dueDate: "31. Jan",
-    trafficLight: "green" as TrafficLight,
-    progress: 100,
+    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days
+    status: "completed" as TaskStatus,
     assignee: { name: "Anna", initials: "AM" },
     commentCount: 8,
     fileCount: 5,
@@ -89,15 +85,14 @@ const allTasks = [
     companyId: "c2",
     companyName: "Beispiel AG",
     amount: "0,00",
-    isCompleted: true,
   },
   {
     id: "6",
     title: "USt-Voranmeldung Januar",
     description: "Monatliche Umsatzsteuer-Voranmeldung für Januar 2025.",
     dueDate: "10. Feb",
-    trafficLight: "green" as TrafficLight,
-    progress: 100,
+    createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000), // 25 days - GREEN
+    status: "completed" as TaskStatus,
     assignee: { name: "Maria", initials: "MM" },
     commentCount: 2,
     fileCount: 1,
@@ -105,67 +100,68 @@ const allTasks = [
     companyId: "c1",
     companyName: "Mustermann GmbH",
     amount: "3.450,00",
-    isCompleted: true,
   },
 ];
 
-// Simulated current user's company
+// Mock companies
+const companies = [
+  { id: "all", name: "Alle Mandanten" },
+  { id: "c1", name: "Mustermann GmbH" },
+  { id: "c2", name: "Beispiel AG" },
+];
+
 const CURRENT_USER_COMPANY_ID = "c1";
-
-function getFilteredTasks(
-  tasks: typeof allTasks, 
-  filter: string, 
-  month: string | null,
-  isCustomer: boolean
-) {
-  let filtered = tasks;
-
-  // Role filter: customers only see their own company's tasks
-  if (isCustomer) {
-    filtered = filtered.filter(t => t.companyId === CURRENT_USER_COMPANY_ID);
-  }
-
-  // Month filter
-  if (month) {
-    filtered = filtered.filter(t => t.period === month);
-  }
-
-  // Status/type filter based on traffic light
-  switch (filter) {
-    case "completed":
-      filtered = filtered.filter(t => t.isCompleted);
-      break;
-    case "yellow":
-      filtered = filtered.filter(t => t.trafficLight === "yellow" && !t.isCompleted);
-      break;
-    case "green":
-      filtered = filtered.filter(t => t.trafficLight === "green" && !t.isCompleted);
-      break;
-    case "red":
-      filtered = filtered.filter(t => t.trafficLight === "red");
-      break;
-    case "this-week":
-      // Simplified: show non-completed, non-green tasks (need attention)
-      filtered = filtered.filter(t => !t.isCompleted && t.trafficLight !== "green");
-      break;
-    case "all":
-    default:
-      // Show all non-completed by default
-      filtered = filtered.filter(t => !t.isCompleted);
-      break;
-  }
-
-  return filtered;
-}
 
 function TasksContent() {
   const searchParams = useSearchParams();
   const { isEmployee, isCustomer } = useRole();
+  const [selectedCompany, setSelectedCompany] = useState("all");
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   
   const filter = searchParams.get("filter") || "all";
   const month = searchParams.get("month");
 
-  const filteredTasks = getFilteredTasks(allTasks, filter, month, isCustomer);
+  const filteredTasks = useMemo(() => {
+    const tasks = allTasks.filter(task => {
+      // Role filter
+      if (isCustomer && task.companyId !== CURRENT_USER_COMPANY_ID) {
+        return false;
+      }
+
+      // Company filter for employees
+      if (isEmployee && selectedCompany !== "all" && task.companyId !== selectedCompany) {
+        return false;
+      }
+
+      // Month filter
+      if (month && task.period !== month) {
+        return false;
+      }
+
+      // Status filter
+      const days = Math.floor((Date.now() - task.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      const trafficLight = calculateTrafficLight(days);
+
+      switch (filter) {
+        case "open":
+          return task.status === "open";
+        case "submitted":
+          return task.status === "submitted";
+        case "completed":
+          return task.status === "completed";
+        case "red":
+          return trafficLight === "red" && task.status !== "completed";
+        case "yellow":
+          return trafficLight === "yellow" && task.status !== "completed";
+        case "all":
+        default:
+          return true;
+      }
+    });
+
+    // Sort by priority (red/oldest first)
+    return sortTasksByPriority(tasks);
+  }, [filter, month, isCustomer, isEmployee, selectedCompany]);
   
   const filterLabel = FILTER_OPTIONS.find(f => f.key === filter)?.label || "Alle";
   const monthLabel = month ? MONTHS.find(m => m.key === month)?.full : null;
@@ -182,14 +178,50 @@ function TasksContent() {
             {filterLabel} 
             {monthLabel && ` • ${monthLabel}`}
             {` • ${filteredTasks.length} Aufgaben`}
+            <span className="text-xs ml-2">(Sortiert nach Dringlichkeit)</span>
           </p>
         </div>
-        {isEmployee && (
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Neue Aufgabe
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Company Filter for employees */}
+          {isEmployee && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+              >
+                <Building2 className="w-4 h-4 mr-2" />
+                {companies.find(c => c.id === selectedCompany)?.name}
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+              
+              {showCompanyDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
+                  {companies.map(company => (
+                    <button
+                      key={company.id}
+                      onClick={() => {
+                        setSelectedCompany(company.id);
+                        setShowCompanyDropdown(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
+                        selectedCompany === company.id ? "bg-blue-50 text-blue-700" : ""
+                      }`}
+                    >
+                      {company.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {isEmployee && (
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Neue Aufgabe
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
@@ -208,18 +240,19 @@ function TasksContent() {
       </div>
 
       {/* Traffic Light Legend */}
-      <div className="flex items-center gap-6 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-yellow-500" />
-          <span className="text-slate-600">Nicht bearbeitet</span>
-        </div>
+      <div className="flex items-center gap-6 text-sm bg-slate-50 p-3 rounded-lg">
+        <span className="font-medium text-slate-600">Ampel-System:</span>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-green-500" />
-          <span className="text-slate-600">Bearbeitet</span>
+          <span className="text-slate-600">Neu (0-30 Tage)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-yellow-500" />
+          <span className="text-slate-600">Warnung (&gt;30 Tage)</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-slate-600">Überfällig (&gt;75 Tage)</span>
+          <span className="text-slate-600">Dringend (&gt;60 Tage)</span>
         </div>
       </div>
 
@@ -233,8 +266,8 @@ function TasksContent() {
               title={task.title}
               description={task.description}
               dueDate={task.dueDate}
-              trafficLight={task.trafficLight}
-              progress={task.progress}
+              createdAt={task.createdAt}
+              status={task.status}
               assignee={task.assignee}
               commentCount={task.commentCount}
               fileCount={task.fileCount}

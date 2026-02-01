@@ -1,16 +1,20 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { ChatPanel, type ChatMessage } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
-import { TRAFFIC_LIGHT_CONFIG, FILE_STATUS, type TrafficLight } from "@/lib/constants";
-import { useRole } from "@/hooks/use-role";
 import { FileUpload } from "@/components/ui/file-upload";
+import { 
+  TRAFFIC_LIGHT_CONFIG, 
+  TASK_STATUS,
+  calculateTrafficLight,
+  type TaskStatus 
+} from "@/lib/constants";
+import { useRole } from "@/hooks/use-role";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -23,7 +27,9 @@ import {
   Paperclip,
   CheckCircle,
   XCircle,
-  AlertCircle
+  Send,
+  RotateCcw,
+  AlertTriangle
 } from "lucide-react";
 
 // Mock task data
@@ -36,8 +42,8 @@ const mockTask = {
   documentDate: "01.02.2025",
   bookingDate: "15.02.2025",
   dueDate: "15. Februar 2025",
-  trafficLight: "green" as TrafficLight,
-  progress: 65,
+  status: "open" as TaskStatus,
+  createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago - YELLOW
   company: {
     id: "c1",
     name: "Mustermann GmbH",
@@ -49,19 +55,18 @@ const mockTask = {
     initials: "TS",
   },
   files: [
-    { id: "f1", name: "Rechnung_Q1_Entwurf.pdf", size: "245 KB", status: "approved" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    { id: "f2", name: "Kundenliste_2025.xlsx", size: "128 KB", status: "pending" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+    { id: "f1", name: "Rechnung_Q1_Entwurf.pdf", size: "245 KB", status: "approved" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
+    { id: "f2", name: "Kundenliste_2025.xlsx", size: "128 KB", status: "pending" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
   ],
-  createdAt: new Date("2025-01-28"),
-  updatedAt: new Date("2025-02-05"),
+  updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
 };
 
-// Mock chat messages for this task with proper timestamps
+// Mock chat messages
 const taskMessages: ChatMessage[] = [
   {
     id: "1",
     content: "Ich habe den Entwurf hochgeladen. Bitte prüfen.",
-    sender: { name: "Thomas Schmidt", initials: "TS", isCurrentUser: false },
+    sender: { name: "Max Mustermann", initials: "MM", isCurrentUser: false },
     timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
     attachments: [
       { id: "a1", name: "Rechnung_Q1_Entwurf.pdf", type: "pdf", size: "245 KB", status: "approved" }
@@ -81,20 +86,17 @@ const taskMessages: ChatMessage[] = [
   },
   {
     id: "4",
-    content: "Bei Kunde Müller fehlt noch die Adressänderung.",
+    content: "Bei Kunde Müller fehlt noch die Adressänderung. Bitte korrigieren.",
     sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
     timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
   },
-  {
-    id: "5",
-    content: "Aktualisierte Kundenliste hochgeladen.",
-    sender: { name: "Thomas Schmidt", initials: "TS", isCurrentUser: false },
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    attachments: [
-      { id: "a2", name: "Kundenliste_2025.xlsx", type: "file", size: "128 KB", status: "pending" }
-    ]
-  },
 ];
+
+const FILE_STATUS_CONFIG = {
+  pending: { label: "Hochgeladen", color: "bg-yellow-100 text-yellow-700", description: "Wartet auf Freigabe" },
+  approved: { label: "Freigegeben", color: "bg-green-100 text-green-700", description: "Vom Mitarbeiter bestätigt" },
+  rejected: { label: "Abgelehnt", color: "bg-red-100 text-red-700", description: "Bitte erneut hochladen" },
+};
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("de-DE", {
@@ -106,15 +108,43 @@ function formatDate(date: Date): string {
 
 export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isEmployee } = useRole();
-  const task = mockTask; // In real app: fetch by id
-  const config = TRAFFIC_LIGHT_CONFIG[task.trafficLight];
-
-  // Calculate days since creation
+  const { isEmployee, isCustomer, permissions } = useRole();
+  const [task, setTask] = useState(mockTask);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const [returnComment, setReturnComment] = useState("");
+  
+  // Calculate traffic light
   const daysSinceCreation = Math.floor(
     (Date.now() - task.createdAt.getTime()) / (1000 * 60 * 60 * 24)
   );
-  const daysUntilOverdue = Math.max(0, 75 - daysSinceCreation);
+  const trafficLight = calculateTrafficLight(daysSinceCreation);
+  const trafficConfig = TRAFFIC_LIGHT_CONFIG[trafficLight];
+  const statusConfig = TASK_STATUS[task.status];
+
+  // Action handlers
+  const handleSubmit = () => {
+    // Customer submits task
+    setTask({ ...task, status: "submitted" });
+    // TODO: API call
+    console.log("Task submitted");
+  };
+
+  const handleComplete = () => {
+    // Employee completes task
+    setTask({ ...task, status: "completed" });
+    // TODO: API call
+    console.log("Task completed");
+  };
+
+  const handleReturn = () => {
+    if (!returnComment.trim()) return;
+    // Employee returns task to customer with comment
+    setTask({ ...task, status: "open" });
+    setShowReturnDialog(false);
+    setReturnComment("");
+    // TODO: API call with comment
+    console.log("Task returned with comment:", returnComment);
+  };
 
   return (
     <div className="flex h-full gap-6">
@@ -128,7 +158,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
               Zurück zur Übersicht
             </Button>
           </Link>
-          {isEmployee && (
+          {isEmployee && task.status !== "completed" && (
             <Link href={`/tasks/${id}/edit`}>
               <Button variant="outline" size="sm">
                 <Edit className="w-4 h-4 mr-2" />
@@ -140,15 +170,21 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Task Header */}
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className={`w-4 h-4 rounded-full ${config.color}`} />
-            <Badge className={`${config.bgLight} ${config.text} border-0`}>
-              {config.label}
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            {/* Traffic Light */}
+            <span className={`w-4 h-4 rounded-full ${trafficConfig.color}`} />
+            <Badge className={`${trafficConfig.bgLight} ${trafficConfig.text} border-0`}>
+              {trafficConfig.label} ({daysSinceCreation} Tage)
             </Badge>
-            {daysUntilOverdue > 0 && daysUntilOverdue <= 14 && (
-              <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">
-                <AlertCircle className="w-3 h-3 mr-1" />
-                Noch {daysUntilOverdue} Tage bis Frist
+            {/* Status Badge */}
+            <Badge className={`${statusConfig.color} border-0`}>
+              {statusConfig.label}
+            </Badge>
+            {/* Warning for old tasks */}
+            {trafficLight === "red" && (
+              <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Dringend: &gt;60 Tage alt
               </Badge>
             )}
           </div>
@@ -156,19 +192,98 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           <p className="text-slate-500 mt-2">{task.description}</p>
         </div>
 
-        {/* Progress */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Fortschritt</span>
-              <span className="text-sm text-slate-500">{task.progress}%</span>
-            </div>
-            <Progress value={task.progress} className="h-2" />
-            <p className="text-xs text-slate-400 mt-2">
-              Erstellt vor {daysSinceCreation} Tagen • 75-Tage-Frist: {daysUntilOverdue > 0 ? `noch ${daysUntilOverdue} Tage` : "überschritten"}
-            </p>
-          </CardContent>
-        </Card>
+        {/* ACTION BUTTONS based on role and status */}
+        {task.status !== "completed" && (
+          <Card className="border-2 border-blue-200 bg-blue-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-blue-900">Aktionen</h3>
+                  <p className="text-sm text-blue-700">
+                    {task.status === "open" && isCustomer && "Bereit zum Einreichen?"}
+                    {task.status === "open" && isEmployee && "Warte auf Einreichung durch Kunden"}
+                    {task.status === "submitted" && isEmployee && "Eingereicht vom Kunden - bereit zur Prüfung"}
+                    {task.status === "submitted" && isCustomer && "Wartet auf Prüfung durch Mitarbeiter"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {/* CUSTOMER: Einreichen Button */}
+                  {isCustomer && task.status === "open" && permissions.canSubmitTask && (
+                    <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
+                      <Send className="w-4 h-4 mr-2" />
+                      Einreichen
+                    </Button>
+                  )}
+
+                  {/* EMPLOYEE: Zurück an Kunde (when submitted) */}
+                  {isEmployee && task.status === "submitted" && permissions.canReturnTask && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowReturnDialog(true)}
+                      className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Zurück an Kunde
+                    </Button>
+                  )}
+
+                  {/* EMPLOYEE: Abschließen Button (when submitted) */}
+                  {isEmployee && task.status === "submitted" && permissions.canCompleteTask && (
+                    <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700">
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Abschließen
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Return Dialog with required comment */}
+              {showReturnDialog && (
+                <div className="mt-4 p-4 bg-white rounded-lg border">
+                  <h4 className="font-medium mb-2">Zurück an Kunde senden</h4>
+                  <p className="text-sm text-slate-500 mb-3">
+                    Bitte geben Sie einen Kommentar ein (Pflichtfeld):
+                  </p>
+                  <textarea
+                    value={returnComment}
+                    onChange={(e) => setReturnComment(e.target.value)}
+                    placeholder="Was muss der Kunde noch erledigen?"
+                    className="w-full p-3 border rounded-lg text-sm mb-3"
+                    rows={3}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowReturnDialog(false)}>
+                      Abbrechen
+                    </Button>
+                    <Button 
+                      onClick={handleReturn}
+                      disabled={!returnComment.trim()}
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Zurücksenden
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Completed Badge */}
+        {task.status === "completed" && (
+          <Card className="border-2 border-green-200 bg-green-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div>
+                  <h3 className="font-medium text-green-900">Aufgabe abgeschlossen</h3>
+                  <p className="text-sm text-green-700">Diese Aufgabe wurde erfolgreich erledigt.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -206,6 +321,13 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
               </div>
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <div className="text-sm font-medium">Erstellt am</div>
+                  <div className="text-sm text-slate-500">{formatDate(task.createdAt)}</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -230,7 +352,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Belegdatum</div>
                   <div className="text-sm text-slate-500">{task.documentDate}</div>
@@ -251,7 +373,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           <CardContent>
             <div className="space-y-2">
               {task.files.map((file) => {
-                const statusConfig = FILE_STATUS[file.status];
+                const statusConf = FILE_STATUS_CONFIG[file.status];
                 return (
                   <div 
                     key={file.id}
@@ -262,17 +384,18 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                       <div>
                         <div className="text-sm font-medium">{file.name}</div>
                         <div className="text-xs text-slate-400">
-                          {file.size} • Hochgeladen am {formatDate(file.uploadedAt)}
+                          {file.size} • {file.uploadedBy} • {formatDate(file.uploadedAt)}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${statusConfig.color} border-0`}>
+                      <Badge className={`text-xs ${statusConf.color} border-0`}>
                         {file.status === "approved" && <CheckCircle className="w-3 h-3 mr-1" />}
                         {file.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
                         {file.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
-                        {statusConfig.label}
+                        {statusConf.label}
                       </Badge>
+                      {/* Employee can approve/reject pending files */}
                       {isEmployee && file.status === "pending" && (
                         <div className="flex gap-1 ml-2">
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50">
@@ -287,18 +410,22 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 );
               })}
-              {/* Drag & Drop Upload */}
-              <div className="mt-4 pt-4 border-t">
-                <FileUpload
-                  onUpload={async (files) => {
-                    // TODO: Upload to MinIO
-                    console.log("Uploading files:", files);
-                    await new Promise(r => setTimeout(r, 1500));
-                  }}
-                  maxFiles={5}
-                  maxSizeMB={10}
-                />
-              </div>
+
+              {/* Upload Area - only if task is not completed */}
+              {task.status !== "completed" && (
+                <div className="mt-4 pt-4 border-t">
+                  <FileUpload
+                    onUpload={async (files) => {
+                      // TODO: Upload to MinIO
+                      console.log("Uploading files:", files);
+                      await new Promise(r => setTimeout(r, 1500));
+                    }}
+                    maxFiles={5}
+                    maxSizeMB={10}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -307,10 +434,11 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         <div className="text-xs text-slate-400 flex gap-4">
           <span>Erstellt: {formatDate(task.createdAt)}</span>
           <span>Aktualisiert: {formatDate(task.updatedAt)}</span>
+          <span>Alter: {daysSinceCreation} Tage</span>
         </div>
       </div>
 
-      {/* Task Chat with real timestamps */}
+      {/* Task Chat - Kommentare mit Autor und Timestamp */}
       <ChatPanel 
         title="KOMMENTARE" 
         taskId={id}
