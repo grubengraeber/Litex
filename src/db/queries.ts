@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { tasks, comments, files, companies, users } from "@/db/schema";
-import { eq, and, desc, asc, or, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, asc, or, sql } from "drizzle-orm";
 
 // ==================== TASKS ====================
 
