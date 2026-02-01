@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Upload, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import { GlobalSearch } from "@/components/layout/global-search";
+import { Upload, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -74,15 +74,8 @@ export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
           Hochladen
         </Button>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Suchen..."
-            className="pl-8 w-40 h-8"
-          />
-        </div>
+        {/* Global Search */}
+        <GlobalSearch />
 
         {/* User Avatar */}
         <Avatar className="w-8 h-8 cursor-pointer">

@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useRole } from "@/hooks/use-role";
+import { usePermissions } from "@/hooks/use-permissions";
+import { RolesManagement } from "@/components/settings/roles-management";
 import { 
   User, 
   Bell, 
@@ -30,6 +32,7 @@ const currentUser = {
 
 function SettingsContent() {
   const { isEmployee } = useRole();
+  const { hasPermission } = usePermissions();
   const [formData, setFormData] = useState({
     name: currentUser.name,
     email: currentUser.email,
@@ -253,6 +256,11 @@ function SettingsContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Roles Management - Only for users with permission */}
+      {(isEmployee || hasPermission("canViewRoles")) && (
+        <RolesManagement />
+      )}
 
       {/* Appearance Section */}
       <Card>
