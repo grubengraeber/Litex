@@ -6,6 +6,7 @@ export const roleEnum = pgEnum("role", ["customer", "employee"]);
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "disabled"]);
 export const taskStatusEnum = pgEnum("task_status", ["open", "submitted", "completed"]);
 export const trafficLightEnum = pgEnum("traffic_light", ["green", "yellow", "red"]);
+export const fileStatusEnum = pgEnum("file_status", ["pending", "approved", "rejected"]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -96,6 +97,12 @@ export const files = pgTable("files", {
   fileSize: integer("file_size"),
   bucket: text("bucket").default("kommunikation-uploads"),
   storageKey: text("storage_key").notNull(),
+  status: fileStatusEnum("status").default("pending"),
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at", { mode: "date" }),
+  rejectedBy: text("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at", { mode: "date" }),
+  rejectionReason: text("rejection_reason"),
   sentToFinmatics: boolean("sent_to_finmatics").default(false),
   finmaticsDocId: text("finmatics_doc_id"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),

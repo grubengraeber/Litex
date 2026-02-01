@@ -29,11 +29,23 @@ import {
   XCircle,
   Send,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 
+type FileStatus = "pending" | "approved" | "rejected";
+
+interface TaskFile {
+  id: string;
+  name: string;
+  size: string;
+  status: FileStatus;
+  uploadedAt: Date;
+  uploadedBy: string;
+}
+
 // Mock task data
-const mockTask = {
+const initialMockTask = {
   id: "1",
   title: "Kunden-Rechnungen Q1",
   description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal. Bitte alle offenen Posten prüfen und die Rechnungen bis zum Fälligkeitsdatum versenden.",
@@ -55,8 +67,8 @@ const mockTask = {
     initials: "TS",
   },
   files: [
-    { id: "f1", name: "Rechnung_Q1_Entwurf.pdf", size: "245 KB", status: "approved" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
-    { id: "f2", name: "Kundenliste_2025.xlsx", size: "128 KB", status: "pending" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
+    { id: "f1", name: "Rechnung_Q1_Entwurf.pdf", size: "245 KB", status: "approved" as FileStatus, uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
+    { id: "f2", name: "Kundenliste_2025.xlsx", size: "128 KB", status: "pending" as FileStatus, uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
   ],
   updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
 };
@@ -109,9 +121,13 @@ function formatDate(date: Date): string {
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { isEmployee, isCustomer, permissions } = useRole();
-  const [task, setTask] = useState(mockTask);
+  const [task, setTask] = useState(initialMockTask);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnComment, setReturnComment] = useState("");
+  const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
+  const [showRejectDialog, setShowRejectDialog] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   
   // Calculate traffic light
   const daysSinceCreation = Math.floor(
@@ -121,12 +137,88 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const trafficConfig = TRAFFIC_LIGHT_CONFIG[trafficLight];
   const statusConfig = TASK_STATUS[task.status];
 
+  // Show notification with auto-hide
+  const showNotification = (type: "success" | "error", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Handle document approval
+  const handleApproveFile = async (fileId: string) => {
+    setLoadingFileId(fileId);
+    try {
+      const response = await fetch(`/api/documents/${fileId}/approve`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Fehler beim Freigeben");
+      }
+
+      // Update local state
+      setTask(prev => ({
+        ...prev,
+        files: prev.files.map(f => 
+          f.id === fileId ? { ...f, status: "approved" as FileStatus } : f
+        ),
+      }));
+      
+      showNotification("success", "Beleg wurde freigegeben");
+    } catch (error) {
+      console.error("Error approving file:", error);
+      showNotification("error", error instanceof Error ? error.message : "Fehler beim Freigeben");
+    } finally {
+      setLoadingFileId(null);
+    }
+  };
+
+  // Handle document rejection
+  const handleRejectFile = async (fileId: string) => {
+    if (!rejectReason.trim()) {
+      showNotification("error", "Bitte geben Sie einen Ablehnungsgrund an");
+      return;
+    }
+
+    setLoadingFileId(fileId);
+    try {
+      const response = await fetch(`/api/documents/${fileId}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Fehler beim Ablehnen");
+      }
+
+      // Update local state
+      setTask(prev => ({
+        ...prev,
+        files: prev.files.map(f => 
+          f.id === fileId ? { ...f, status: "rejected" as FileStatus } : f
+        ),
+      }));
+
+      setShowRejectDialog(null);
+      setRejectReason("");
+      showNotification("success", "Beleg wurde abgelehnt");
+    } catch (error) {
+      console.error("Error rejecting file:", error);
+      showNotification("error", error instanceof Error ? error.message : "Fehler beim Ablehnen");
+    } finally {
+      setLoadingFileId(null);
+    }
+  };
+
   // Action handlers
   const handleSubmit = () => {
     // Customer submits task
     setTask({ ...task, status: "submitted" });
     // TODO: API call
     console.log("Task submitted");
+    showNotification("success", "Aufgabe wurde eingereicht");
   };
 
   const handleComplete = () => {
@@ -134,6 +226,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     setTask({ ...task, status: "completed" });
     // TODO: API call
     console.log("Task completed");
+    showNotification("success", "Aufgabe wurde abgeschlossen");
   };
 
   const handleReturn = () => {
@@ -144,10 +237,29 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     setReturnComment("");
     // TODO: API call with comment
     console.log("Task returned with comment:", returnComment);
+    showNotification("success", "Aufgabe wurde zurückgesendet");
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6">
+    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6 relative">
+      {/* Notification Toast */}
+      {notification && (
+        <div 
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transition-all ${
+            notification.type === "success" 
+              ? "bg-green-100 text-green-800 border border-green-200" 
+              : "bg-red-100 text-red-800 border border-red-200"
+          }`}
+        >
+          {notification.type === "success" ? (
+            <CheckCircle className="w-4 h-4" />
+          ) : (
+            <XCircle className="w-4 h-4" />
+          )}
+          {notification.message}
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 min-w-0 space-y-4 lg:space-y-6 overflow-auto order-2 lg:order-1">
         {/* Back & Actions */}
@@ -374,39 +486,100 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             <div className="space-y-2">
               {task.files.map((file) => {
                 const statusConf = FILE_STATUS_CONFIG[file.status];
+                const isLoading = loadingFileId === file.id;
+
                 return (
-                  <div 
-                    key={file.id}
-                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <div className="text-sm font-medium">{file.name}</div>
-                        <div className="text-xs text-slate-400">
-                          {file.size} • {file.uploadedBy} • {formatDate(file.uploadedAt)}
+                  <div key={file.id}>
+                    <div 
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <div className="text-sm font-medium">{file.name}</div>
+                          <div className="text-xs text-slate-400">
+                            {file.size} • {file.uploadedBy} • {formatDate(file.uploadedAt)}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs ${statusConf.color} border-0`}>
+                          {file.status === "approved" && <CheckCircle className="w-3 h-3 mr-1" />}
+                          {file.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
+                          {file.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
+                          {statusConf.label}
+                        </Badge>
+                        {/* Employee can approve/reject pending files */}
+                        {isEmployee && file.status === "pending" && (
+                          <div className="flex gap-1 ml-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleApproveFile(file.id)}
+                              disabled={isLoading}
+                            >
+                              {isLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => setShowRejectDialog(file.id)}
+                              disabled={isLoading}
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${statusConf.color} border-0`}>
-                        {file.status === "approved" && <CheckCircle className="w-3 h-3 mr-1" />}
-                        {file.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
-                        {file.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
-                        {statusConf.label}
-                      </Badge>
-                      {/* Employee can approve/reject pending files */}
-                      {isEmployee && file.status === "pending" && (
-                        <div className="flex gap-1 ml-2">
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50">
-                            <CheckCircle className="w-4 h-4" />
+
+                    {/* Reject Dialog */}
+                    {showRejectDialog === file.id && (
+                      <div className="mt-2 p-4 bg-red-50 rounded-lg border border-red-200">
+                        <h4 className="font-medium text-red-900 mb-2">Beleg ablehnen</h4>
+                        <p className="text-sm text-red-700 mb-3">
+                          Bitte geben Sie einen Ablehnungsgrund an:
+                        </p>
+                        <textarea
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="Grund für die Ablehnung..."
+                          className="w-full p-3 border rounded-lg text-sm mb-3"
+                          rows={2}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setShowRejectDialog(null);
+                              setRejectReason("");
+                            }}
+                          >
+                            Abbrechen
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
-                            <XCircle className="w-4 h-4" />
+                          <Button 
+                            size="sm"
+                            onClick={() => handleRejectFile(file.id)}
+                            disabled={!rejectReason.trim() || isLoading}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                              <XCircle className="w-4 h-4 mr-2" />
+                            )}
+                            Ablehnen
                           </Button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
