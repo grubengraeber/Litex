@@ -171,15 +171,15 @@ function DashboardContent() {
   }, [filteredTasks]);
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6">
       {/* Main Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between mb-6">
+      <div className="flex-1 min-w-0 order-2 lg:order-1">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-xl lg:text-2xl font-bold text-slate-900">
               {activeMonth.full.toUpperCase()} AUFGABEN
             </h1>
-            <p className="text-slate-500 mt-1">
+            <p className="text-sm lg:text-base text-slate-500 mt-1">
               {isCustomer ? "Ihre offenen Aufgaben" : "Alle Mandantenaufgaben verwalten"}
             </p>
           </div>
@@ -220,25 +220,25 @@ function DashboardContent() {
         </div>
 
         {/* Stats Bar - Ampel Legende */}
-        <div className="flex gap-4 mb-6">
+        <div className="flex flex-wrap gap-2 lg:gap-4 mb-6">
           <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
-            <span className="text-sm text-slate-600">Gesamt:</span>
-            <span className="font-semibold">{stats.total}</span>
+            <span className="text-xs lg:text-sm text-slate-600">Gesamt:</span>
+            <span className="font-semibold text-sm lg:text-base">{stats.total}</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg" title="Neu (0-30 Tage)">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-            <span className="text-sm text-green-700">Neu:</span>
-            <span className="font-semibold text-green-700">{stats.green}</span>
+            <span className="text-xs lg:text-sm text-green-700">Neu:</span>
+            <span className="font-semibold text-sm lg:text-base text-green-700">{stats.green}</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg" title="Warnung (>30 Tage)">
             <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-            <span className="text-sm text-yellow-700">&gt;30 Tage:</span>
-            <span className="font-semibold text-yellow-700">{stats.yellow}</span>
+            <span className="text-xs lg:text-sm text-yellow-700">&gt;30d:</span>
+            <span className="font-semibold text-sm lg:text-base text-yellow-700">{stats.yellow}</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg" title="Dringend (>60 Tage)">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span className="text-sm text-red-700">&gt;60 Tage:</span>
-            <span className="font-semibold text-red-700">{stats.red}</span>
+            <span className="text-xs lg:text-sm text-red-700">&gt;60d:</span>
+            <span className="font-semibold text-sm lg:text-base text-red-700">{stats.red}</span>
           </div>
         </div>
 
@@ -280,8 +280,10 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* Chat Panel */}
-      <ChatPanel title="TEAM CHAT" />
+      {/* Chat Panel - Hidden on mobile, shown on lg+ */}
+      <div className="hidden lg:block order-2 w-80 xl:w-96 flex-shrink-0">
+        <ChatPanel title="TEAM CHAT" />
+      </div>
     </div>
   );
 }
