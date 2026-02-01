@@ -114,13 +114,53 @@ volumes:
 ```
 DATABASE_URL=postgresql://litex:litex_secret_2026@litex-postgres:5432/litex
 AUTH_SECRET=dein-geheimer-key-hier
-MINIO_ENDPOINT=http://minio:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin123
-MINIO_BUCKET=kommunikation-uploads
+S3_ENDPOINT=http://minio:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin123
+S3_BUCKET=kommunikation-uploads
+S3_REGION=eu-central-1
 ```
 
 5. Deploy
+
+### 6. MinIO Bucket erstellen
+
+Nach dem MinIO Deploy, Bucket `kommunikation-uploads` erstellen:
+
+**Option A: MinIO Console (empfohlen)**
+1. MinIO Console öffnen: `http://<server-ip>:9001`
+2. Login: `minioadmin` / `minioadmin123`
+3. Buckets → Create Bucket → Name: `kommunikation-uploads`
+4. Access Policy: Private (Default)
+
+**Option B: MinIO CLI**
+```bash
+# MinIO Client installieren
+wget https://dl.min.io/client/mc/release/linux-amd64/mc
+chmod +x mc
+
+# MinIO konfigurieren
+./mc alias set litex http://localhost:9000 minioadmin minioadmin123
+
+# Bucket erstellen
+./mc mb litex/kommunikation-uploads
+```
+
+### 7. Datenbank-Migrationen ausführen
+
+Nach dem ersten App-Deploy müssen die Tabellen erstellt werden:
+
+```bash
+# Migrationen manuell ausführen (SQL-Dateien in /drizzle)
+psql $DATABASE_URL -f drizzle/0000_initial.sql
+psql $DATABASE_URL -f drizzle/0001_add_clients_table.sql
+
+# Oder: npm scripts (wenn drizzle-kit verfügbar)
+npm run db:generate  # Generiert Migration-Files
+npm run db:migrate   # Führt Migrationen aus
+```
+
+In Coolify: App → Terminal → Commands ausführen
 
 ---
 
@@ -130,10 +170,11 @@ MINIO_BUCKET=kommunikation-uploads
 |----------|--------------|----------|
 | `DATABASE_URL` | PostgreSQL Connection String | `postgresql://litex:pass@host:5432/litex` |
 | `AUTH_SECRET` | Auth.js Secret (min 32 chars) | `openssl rand -base64 32` |
-| `MINIO_ENDPOINT` | MinIO API URL | `http://minio:9000` |
-| `MINIO_ACCESS_KEY` | MinIO Access Key | `minioadmin` |
-| `MINIO_SECRET_KEY` | MinIO Secret Key | `minioadmin123` |
-| `MINIO_BUCKET` | Upload Bucket Name | `kommunikation-uploads` |
+| `S3_ENDPOINT` | MinIO/S3 API URL | `http://minio:9000` |
+| `S3_ACCESS_KEY` | S3 Access Key | `minioadmin` |
+| `S3_SECRET_KEY` | S3 Secret Key | `minioadmin123` |
+| `S3_BUCKET` | Upload Bucket Name | `kommunikation-uploads` |
+| `S3_REGION` | S3 Region | `eu-central-1` |
 | `SMTP_HOST` | E-Mail Server | `smtp.office365.com` |
 | `SMTP_PORT` | SMTP Port | `587` |
 | `SMTP_USER` | SMTP Username | `mail@domain.com` |
