@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -15,11 +17,17 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // TODO: Implement actual sign in
+    // TODO: Implement actual magic link sending via Auth.js
+    // POST /api/auth/signin/email
     await new Promise((resolve) => setTimeout(resolve, 1500));
     
     setSent(true);
     setIsLoading(false);
+  };
+
+  const handleUseCode = () => {
+    // Navigate to code verification with email as query param
+    router.push(`/login/verify?email=${encodeURIComponent(email)}`);
   };
 
   if (sent) {
@@ -28,20 +36,41 @@ export default function LoginPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardTitle className="text-2xl">E-Mail gesendet</CardTitle>
             <CardDescription className="text-base mt-2">
-              We sent a magic link to <strong>{email}</strong>
+              Wir haben einen Anmelde-Link an <strong>{email}</strong> gesendet.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-slate-500 mb-4">
-              Click the link in your email to sign in. The link expires in 15 minutes.
-            </p>
-            <Button variant="outline" onClick={() => setSent(false)}>
-              Use a different email
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg text-center">
+              <p className="text-sm text-blue-700">
+                <strong>Alternativ:</strong> Nutzen Sie den 6-stelligen Code aus der E-Mail
+              </p>
+            </div>
+            
+            <Button 
+              variant="default" 
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              onClick={handleUseCode}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Code eingeben
             </Button>
+            
+            <div className="text-center">
+              <button 
+                onClick={() => setSent(false)}
+                className="text-sm text-slate-500 hover:text-slate-700"
+              >
+                Andere E-Mail verwenden
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 text-center">
+              Der Link ist 15 Minuten gültig. Session: 30 Tage.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -58,43 +87,60 @@ export default function LoginPage() {
             </div>
             <span className="font-semibold text-2xl">Litex</span>
           </div>
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
+          <CardTitle className="text-2xl">Willkommen</CardTitle>
           <CardDescription>
-            Sign in with your email to continue
+            Melden Sie sich mit Ihrer E-Mail-Adresse an
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email address
+                E-Mail-Adresse
               </label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@company.com"
+                placeholder="name@firma.at"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                autoComplete="email"
+                autoFocus
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending link...
+                  Link wird gesendet...
                 </>
               ) : (
                 <>
-                  Continue with Email
+                  Anmelden
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               )}
             </Button>
           </form>
-          <p className="text-xs text-slate-500 text-center mt-6">
-            By continuing, you agree to our Terms of Service and Privacy Policy.
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-slate-400">Passwortlos</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 text-center">
+            Sie erhalten einen Magic Link und einen 6-stelligen Code per E-Mail.
+            Kein Passwort erforderlich.
+          </p>
+
+          <p className="text-xs text-slate-400 text-center mt-4">
+            ALB Steuerberatung • Klientenportal
           </p>
         </CardContent>
       </Card>

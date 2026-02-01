@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { TRAFFIC_LIGHT_CONFIG, FILE_STATUS, type TrafficLight } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
+import { FileUpload } from "@/components/ui/file-upload";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -286,13 +287,18 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 );
               })}
-              <Button variant="outline" className="w-full mt-2">
-                <Paperclip className="w-4 h-4 mr-2" />
-                Beleg hochladen
-              </Button>
-              <p className="text-xs text-slate-400 text-center">
-                PDF und Bilder erlaubt • Wird zur Freigabe eingereicht
-              </p>
+              {/* Drag & Drop Upload */}
+              <div className="mt-4 pt-4 border-t">
+                <FileUpload
+                  onUpload={async (files) => {
+                    // TODO: Upload to MinIO
+                    console.log("Uploading files:", files);
+                    await new Promise(r => setTimeout(r, 1500));
+                  }}
+                  maxFiles={5}
+                  maxSizeMB={10}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
