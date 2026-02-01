@@ -16,8 +16,10 @@ import {
   FileText,
   Building2,
   UserPlus,
+  Shield,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
+import { usePermissions } from "@/hooks/use-permissions";
 
 import {
   Sidebar,
@@ -62,9 +64,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFilter = searchParams.get("filter") || "all";
-  const { isEmployee, permissions } = useRole();
+  const { isEmployee, permissions: rolePermissions } = useRole();
+  const { hasPermission } = usePermissions();
 
-  const navigation = isEmployee ? employeeNavigation : customerNavigation;
+  // Build navigation based on permissions
+  const navigation = React.useMemo(() => {
+    const baseNav = [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: isEmployee ? "Aufgaben" : "Meine Aufgaben", href: "/tasks", icon: FileText },
+    ];
+    
+    if (hasPermission("canViewTeam") || isEmployee) {
+      baseNav.push({ name: "Team", href: "/team", icon: Users });
+    }
+    
+    if (hasPermission("canViewClients") || isEmployee) {
+      baseNav.push({ name: "Mandanten", href: "/companies", icon: Building2 });
+    }
+    
+    baseNav.push({ name: "Einstellungen", href: "/settings", icon: Settings });
+    
+    return baseNav;
+  }, [isEmployee, hasPermission]);
 
   const getFilterHref = (filter: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -146,17 +167,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         {/* Quick Actions for Employees */}
-        {isEmployee && permissions.canInviteUsers && (
+        {(isEmployee || hasPermission("canInviteUsers")) && (
           <SidebarGroup>
             <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Benutzer einladen">
-                    <UserPlus />
-                    <span>Benutzer einladen</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {(hasPermission("canInviteUsers") || rolePermissions.canInviteUsers) && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Benutzer einladen">
+                      <UserPlus />
+                      <span>Benutzer einladen</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

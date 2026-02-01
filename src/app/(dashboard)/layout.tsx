@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { Separator } from "@/components/ui/separator";
 import { RoleProvider } from "@/components/providers/role-provider";
+import { PermissionsProvider } from "@/components/providers/permissions-provider";
 
 function SidebarSkeleton() {
   return <div className="w-64 bg-background border-r animate-pulse" />;
@@ -23,7 +24,8 @@ export default function DashboardLayout({
 
   return (
     <RoleProvider role={userRole}>
-      <SidebarProvider>
+      <PermissionsProvider>
+        <SidebarProvider>
         <Suspense fallback={<SidebarSkeleton />}>
           <AppSidebar />
         </Suspense>
@@ -42,6 +44,7 @@ export default function DashboardLayout({
           </main>
         </SidebarInset>
       </SidebarProvider>
+      </PermissionsProvider>
     </RoleProvider>
   );
 }

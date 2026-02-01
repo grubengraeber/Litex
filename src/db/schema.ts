@@ -1,11 +1,13 @@
-import { pgTable, text, timestamp, uuid, pgEnum, boolean, decimal, date, integer, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, pgEnum, boolean, decimal, date, integer, jsonb, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Enums
 export const roleEnum = pgEnum("role", ["customer", "employee"]);
+export const systemRoleEnum = pgEnum("system_role", ["admin", "manager", "employee", "viewer"]);
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "disabled"]);
 export const taskStatusEnum = pgEnum("task_status", ["open", "submitted", "completed"]);
 export const trafficLightEnum = pgEnum("traffic_light", ["green", "yellow", "red"]);
+export const fileStatusEnum = pgEnum("file_status", ["pending", "approved", "rejected"]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -59,6 +61,58 @@ export const authCodes = pgTable("auth_codes", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+// Roles and permissions
+export const roles = pgTable("roles", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  permissions: jsonb("permissions").$type<RolePermissions>().notNull().default({}),
+  isSystem: boolean("is_system").default(false), // System roles can't be deleted
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
+export const userRoles = pgTable("user_roles", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  assignedBy: text("assigned_by").references(() => users.id),
+  assignedAt: timestamp("assigned_at", { mode: "date" }).defaultNow(),
+});
+
+// Permission type for JSONB
+export interface RolePermissions {
+  // Navigation/View permissions
+  canViewDashboard?: boolean;
+  canViewTasks?: boolean;
+  canViewClients?: boolean;
+  canViewTeam?: boolean;
+  canViewSettings?: boolean;
+  canViewRoles?: boolean;
+  // Task permissions
+  canCreateTasks?: boolean;
+  canEditTasks?: boolean;
+  canDeleteTasks?: boolean;
+  canSubmitTasks?: boolean;
+  canCompleteTasks?: boolean;
+  canReturnTasks?: boolean;
+  // Client permissions
+  canCreateClients?: boolean;
+  canEditClients?: boolean;
+  canDeleteClients?: boolean;
+  // User permissions
+  canInviteUsers?: boolean;
+  canEditUsers?: boolean;
+  canDeleteUsers?: boolean;
+  canManageRoles?: boolean;
+  // File permissions
+  canUploadFiles?: boolean;
+  canDeleteFiles?: boolean;
+  // Comment permissions
+  canComment?: boolean;
+  canDeleteComments?: boolean;
+}
+
 // Business tables
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -96,6 +150,12 @@ export const files = pgTable("files", {
   fileSize: integer("file_size"),
   bucket: text("bucket").default("kommunikation-uploads"),
   storageKey: text("storage_key").notNull(),
+  status: fileStatusEnum("status").default("pending"),
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at", { mode: "date" }),
+  rejectedBy: text("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at", { mode: "date" }),
+  rejectionReason: text("rejection_reason"),
   sentToFinmatics: boolean("sent_to_finmatics").default(false),
   finmaticsDocId: text("finmatics_doc_id"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
@@ -114,6 +174,17 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, { fields: [users.companyId], references: [companies.id] }),
   comments: many(comments),
   files: many(files),
+  userRoles: many(userRoles),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  userRoles: many(userRoles),
+}));
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+  user: one(users, { fields: [userRoles.userId], references: [users.id] }),
+  role: one(roles, { fields: [userRoles.roleId], references: [roles.id] }),
+  assignedByUser: one(users, { fields: [userRoles.assignedBy], references: [users.id] }),
 }));
 
 export const companiesRelations = relations(companies, ({ many }) => ({
