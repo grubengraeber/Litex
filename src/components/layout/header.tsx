@@ -1,61 +1,77 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { MONTHS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Upload, ChevronDown, Calendar } from "lucide-react";
+import { Search, Upload, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
-const months = [
-  { short: "JAN", full: "January" },
-  { short: "FEB", full: "February" },
-  { short: "MAR", full: "March" },
-  { short: "APR", full: "April" },
-  { short: "MAY", full: "May" },
-  { short: "JUN", full: "June" },
-  { short: "JUL", full: "July" },
-  { short: "AUG", full: "August" },
-  { short: "SEP", full: "September" },
-  { short: "OCT", full: "October" },
-  { short: "NOV", full: "November" },
-  { short: "DEC", full: "December" },
-];
+interface HeaderProps {
+  onMonthChange?: (month: string) => void;
+  showMonthFilter?: boolean;
+}
 
-export function Header() {
+export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const currentMonth = new Date().getMonth();
-  const [activeMonth, setActiveMonth] = useState(currentMonth);
+  const currentMonthKey = MONTHS[currentMonth].key;
+  
+  const activeMonthKey = searchParams.get("month") || currentMonthKey;
+  const [showAllMonths, setShowAllMonths] = useState(false);
+
+  const handleMonthClick = (monthKey: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", monthKey);
+    router.push(`?${params.toString()}`);
+    onMonthChange?.(monthKey);
+  };
+
+  const visibleMonths = showAllMonths ? MONTHS : MONTHS.slice(0, 5);
 
   return (
     <div className="flex flex-1 items-center justify-between">
       {/* Month Tabs */}
-      <div className="flex items-center gap-1">
-        {months.slice(0, 5).map((month, index) => (
-          <button
-            key={month.short}
-            onClick={() => setActiveMonth(index)}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              activeMonth === index
-                ? "bg-blue-600 text-white"
-                : "text-slate-600 hover:bg-slate-100"
-            )}
+      {showMonthFilter && (
+        <div className="flex items-center gap-1 flex-wrap">
+          {visibleMonths.map((month) => (
+            <button
+              key={month.key}
+              onClick={() => handleMonthClick(month.key)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                activeMonthKey === month.key
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              {month.short}
+            </button>
+          ))}
+          <button 
+            onClick={() => setShowAllMonths(!showAllMonths)}
+            className="px-2 py-1.5 text-slate-400 hover:text-slate-600"
+            title={showAllMonths ? "Weniger anzeigen" : "Mehr anzeigen"}
           >
-            <Calendar className="w-3.5 h-3.5" />
-            {month.short}
+            {showAllMonths ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
-        ))}
-        <button className="px-2 py-1.5 text-slate-400 hover:text-slate-600">
-          <ChevronDown className="w-4 h-4" />
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Right Section */}
       <div className="flex items-center gap-3">
         {/* Upload Button */}
         <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
           <Upload className="w-4 h-4 mr-2" />
-          Upload
+          Hochladen
         </Button>
 
         {/* Search */}
@@ -70,7 +86,7 @@ export function Header() {
 
         {/* User Avatar */}
         <Avatar className="w-8 h-8 cursor-pointer">
-          <AvatarImage src="/avatar.jpg" alt="User" />
+          <AvatarImage src="/avatar.jpg" alt="Benutzer" />
           <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
         </Avatar>
       </div>

@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import * as React from "react";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -14,7 +14,8 @@ import {
   Archive,
   FileText,
   Building2,
-} from "lucide-react"
+} from "lucide-react";
+import { useRole } from "@/hooks/use-role";
 
 import {
   Sidebar,
@@ -29,27 +30,48 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-const navigation = [
+const employeeNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Aufgaben", href: "/tasks", icon: FileText },
   { name: "Team", href: "/team", icon: Users },
   { name: "Mandanten", href: "/companies", icon: Building2 },
   { name: "Einstellungen", href: "/settings", icon: Settings },
-]
+];
+
+const customerNavigation = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Meine Aufgaben", href: "/tasks", icon: FileText },
+  { name: "Einstellungen", href: "/settings", icon: Settings },
+];
 
 const filters = [
   { name: "Alle", icon: Filter, count: 24, filter: "all" },
-  { name: "Diese Woche", icon: Calendar, count: 8, filter: "due-this-week" },
+  { name: "Diese Woche", icon: Calendar, count: 8, filter: "this-week" },
   { name: "Prioritäten", icon: Star, count: 5, filter: "priorities" },
   { name: "Erledigt", icon: CheckCircle, count: 12, filter: "completed" },
   { name: "Archiviert", icon: Archive, count: 3, filter: "archived" },
-]
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
-  const [activeFilter, setActiveFilter] = React.useState("all")
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentFilter = searchParams.get("filter") || "all";
+  const { isEmployee } = useRole();
+
+  const navigation = isEmployee ? employeeNavigation : customerNavigation;
+
+  const getFilterHref = (filter: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (filter === "all") {
+      params.delete("filter");
+    } else {
+      params.set("filter", filter);
+    }
+    const queryString = params.toString();
+    return `/tasks${queryString ? `?${queryString}` : ""}`;
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -95,7 +117,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Filters */}
+        {/* Filters - nur auf /tasks Seite oder wenn relevant */}
         <SidebarGroup>
           <SidebarGroupLabel>Filter</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -103,12 +125,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {filters.map((filter) => (
                 <SidebarMenuItem key={filter.name}>
                   <SidebarMenuButton
-                    isActive={activeFilter === filter.filter}
-                    onClick={() => setActiveFilter(filter.filter)}
+                    asChild
+                    isActive={currentFilter === filter.filter && pathname.startsWith("/tasks")}
                     tooltip={filter.name}
                   >
-                    <filter.icon />
-                    <span>{filter.name}</span>
+                    <Link href={getFilterHref(filter.filter)}>
+                      <filter.icon />
+                      <span>{filter.name}</span>
+                    </Link>
                   </SidebarMenuButton>
                   <SidebarMenuBadge>{filter.count}</SidebarMenuBadge>
                 </SidebarMenuItem>
@@ -133,5 +157,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
