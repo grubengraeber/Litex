@@ -2,17 +2,21 @@
 
 Kommunikations- und Aufgabenplattform zur strukturierten Klärung offener Buchungen.
 
+> **Hinweis:** Dies ist ein privates Kundenprojekt.
+
 ## Tech Stack
 
-- **Framework:** Next.js 14+ (App Router)
-- **Language:** TypeScript
-- **Database:** PostgreSQL 15 + Drizzle ORM
-- **Auth:** Auth.js v5 (Passwordless Magic Links)
-- **Storage:** MinIO (S3-kompatibel)
-- **Styling:** Tailwind CSS + shadcn/ui
-- **Hosting:** Coolify (Self-Hosted PaaS)
+| Komponente | Technologie |
+|------------|-------------|
+| Framework | Next.js 14+ (App Router) |
+| Sprache | TypeScript |
+| Datenbank | PostgreSQL 15 + Drizzle ORM |
+| Auth | Auth.js v5 (Passwordless Magic Links) |
+| Storage | MinIO (S3-kompatibel) |
+| Styling | Tailwind CSS + shadcn/ui |
+| Hosting | Coolify (Self-Hosted PaaS) |
 
-## Features
+## MVP Features
 
 - ✅ Passwordless Login (Magic Link + 6-stelliger Code)
 - ✅ Session Management (30 Tage)
@@ -26,56 +30,81 @@ Kommunikations- und Aufgabenplattform zur strukturierten Klärung offener Buchun
 
 ## Getting Started
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/grubengraeber/Litex.git
-   cd Litex
-   ```
+### Voraussetzungen
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+- Node.js 18+
+- PostgreSQL 15
+- MinIO (oder S3-kompatibler Storage)
 
-3. **Setup environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your values
-   ```
+### Installation
 
-4. **Setup database:**
-   ```bash
-   npm run db:generate
-   npm run db:migrate
-   ```
+```bash
+# Repository klonen
+git clone https://github.com/grubengraeber/Litex.git
+cd Litex
 
-5. **Run development server:**
-   ```bash
-   npm run dev
-   ```
+# Dependencies installieren
+npm install
 
-6. **Open http://localhost:3000**
+# Environment einrichten
+cp .env.example .env
+# .env mit eigenen Werten befüllen
 
-## Project Structure
+# Datenbank migrieren
+npm run db:generate
+npm run db:migrate
+
+# Development Server starten
+npm run dev
+```
+
+Öffne http://localhost:3000
+
+## Projektstruktur
 
 ```
 src/
 ├── app/
-│   ├── (auth)/           # Auth pages (login, verify)
-│   ├── (dashboard)/      # Dashboard pages
-│   └── api/              # API routes
+│   ├── (auth)/           # Auth Seiten (Login, Verify)
+│   ├── (dashboard)/      # Dashboard Seiten
+│   └── api/              # API Routes
 ├── components/
-│   ├── ui/               # shadcn/ui components
-│   ├── layout/           # Layout components
-│   └── tasks/            # Task-related components
+│   ├── ui/               # shadcn/ui Komponenten
+│   ├── layout/           # Layout Komponenten (Sidebar, Header)
+│   └── tasks/            # Task Komponenten
 ├── db/
-│   ├── schema.ts         # Drizzle schema
-│   └── index.ts          # Database connection
+│   ├── schema.ts         # Drizzle Schema
+│   └── index.ts          # DB Connection
 └── lib/
-    ├── auth.ts           # Auth.js configuration
-    └── utils.ts          # Utility functions
+    ├── auth.ts           # Auth.js Konfiguration
+    └── utils.ts          # Utility Functions
 ```
 
-## License
+## Environment Variables
 
-Private - ALB Kanzlei
+```env
+DATABASE_URL=postgresql://...
+AUTH_SECRET=...
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+EMAIL_FROM=...
+MINIO_ENDPOINT=...
+MINIO_ACCESS_KEY=...
+MINIO_SECRET_KEY=...
+MINIO_BUCKET=kommunikation-uploads
+```
+
+## Deployment
+
+Das Projekt ist für Coolify (Self-Hosted PaaS) optimiert.
+
+1. Coolify Projekt erstellen
+2. Git Repository verbinden
+3. Environment Variables setzen
+4. Deploy
+
+---
+
+*ALB Kanzlei - Kommunikations- und Aufgabenplattform*

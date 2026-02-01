@@ -27,7 +27,7 @@ export function Header() {
   const [activeMonth, setActiveMonth] = useState(currentMonth);
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
+    <div className="flex flex-1 items-center justify-between">
       {/* Month Tabs */}
       <div className="flex items-center gap-1">
         {months.slice(0, 5).map((month, index) => (
@@ -35,45 +35,45 @@ export function Header() {
             key={month.short}
             onClick={() => setActiveMonth(index)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               activeMonth === index
                 ? "bg-blue-600 text-white"
                 : "text-slate-600 hover:bg-slate-100"
             )}
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3.5 h-3.5" />
             {month.short}
           </button>
         ))}
-        <button className="px-3 py-2 text-slate-400 hover:text-slate-600">
+        <button className="px-2 py-1.5 text-slate-400 hover:text-slate-600">
           <ChevronDown className="w-4 h-4" />
         </button>
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Upload Button */}
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
           <Upload className="w-4 h-4 mr-2" />
-          UPLOAD
+          Upload
         </Button>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             type="search"
-            placeholder="Search"
-            className="pl-10 w-48"
+            placeholder="Suchen..."
+            className="pl-8 w-40 h-8"
           />
         </div>
 
         {/* User Avatar */}
-        <Avatar className="w-9 h-9 cursor-pointer">
+        <Avatar className="w-8 h-8 cursor-pointer">
           <AvatarImage src="/avatar.jpg" alt="User" />
-          <AvatarFallback className="bg-blue-100 text-blue-600">FT</AvatarFallback>
+          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
         </Avatar>
       </div>
-    </header>
+    </div>
   );
 }
