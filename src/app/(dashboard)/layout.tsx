@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { Separator } from "@/components/ui/separator";
 import { RoleProvider } from "@/components/providers/role-provider";
+import { UnsavedChangesProvider } from "@/components/providers/unsaved-changes-provider";
 
 function SidebarSkeleton() {
   return <div className="w-64 bg-background border-r animate-pulse" />;
@@ -23,25 +24,27 @@ export default function DashboardLayout({
 
   return (
     <RoleProvider role={userRole}>
-      <SidebarProvider>
-        <Suspense fallback={<SidebarSkeleton />}>
-          <AppSidebar />
-        </Suspense>
-        <SidebarInset className="flex flex-col h-screen overflow-hidden">
-          {/* Sticky Header */}
-          <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Suspense fallback={<HeaderSkeleton />}>
-              <Header />
-            </Suspense>
-          </header>
-          {/* Scrollable Main Content */}
-          <main className="flex-1 overflow-auto p-6">
-            {children}
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+      <UnsavedChangesProvider>
+        <SidebarProvider>
+          <Suspense fallback={<SidebarSkeleton />}>
+            <AppSidebar />
+          </Suspense>
+          <SidebarInset className="flex flex-col h-screen overflow-hidden">
+            {/* Sticky Header */}
+            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <Suspense fallback={<HeaderSkeleton />}>
+                <Header />
+              </Suspense>
+            </header>
+            {/* Scrollable Main Content */}
+            <main className="flex-1 overflow-auto p-6">
+              {children}
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </UnsavedChangesProvider>
     </RoleProvider>
   );
 }
