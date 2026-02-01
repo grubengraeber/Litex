@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { tasks, comments, files, companies, users } from "@/db/schema";
-import { eq, and, desc, asc, or, sql } from "drizzle-orm";
+import { tasks, comments, files, companies, users, clients } from "@/db/schema";
+import { eq, and, desc, asc, or, sql, ilike } from "drizzle-orm";
 
 // ==================== TASKS ====================
 
@@ -198,6 +198,128 @@ export async function deleteFile(fileId: string) {
   await db.delete(files).where(eq(files.id, fileId));
   
   return file; // Return for S3 cleanup
+}
+
+// ==================== CLIENTS (MANDANTEN) ====================
+
+export interface ClientFilters {
+  search?: string;
+  includeInactive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export async function getAllClients(filters: ClientFilters = {}) {
+  if (!db) throw new Error("Database not configured");
+
+  const conditions = [];
+
+  if (!filters.includeInactive) {
+    conditions.push(eq(clients.isActive, true));
+  }
+
+  // Fulltext search across all relevant fields
+  if (filters.search) {
+    const searchTerm = `%${filters.search}%`;
+    conditions.push(
+      or(
+        ilike(clients.name, searchTerm),
+        ilike(clients.email, searchTerm),
+        ilike(clients.phone, searchTerm),
+        ilike(clients.street, searchTerm),
+        ilike(clients.city, searchTerm),
+        ilike(clients.postalCode, searchTerm),
+        ilike(clients.taxId, searchTerm),
+        ilike(clients.vatId, searchTerm),
+        ilike(clients.notes, searchTerm)
+      )
+    );
+  }
+
+  return db.query.clients.findMany({
+    where: conditions.length > 0 ? and(...conditions) : undefined,
+    with: {
+      companies: true,
+    },
+    orderBy: [asc(clients.name)],
+    limit: filters.limit || 50,
+    offset: filters.offset || 0,
+  });
+}
+
+export async function getClientById(clientId: string) {
+  if (!db) throw new Error("Database not configured");
+
+  return db.query.clients.findFirst({
+    where: eq(clients.id, clientId),
+    with: {
+      companies: true,
+    },
+  });
+}
+
+export async function createClient(data: {
+  name: string;
+  email?: string;
+  phone?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  taxId?: string;
+  vatId?: string;
+  notes?: string;
+}) {
+  if (!db) throw new Error("Database not configured");
+
+  const [client] = await db.insert(clients).values(data).returning();
+  return client;
+}
+
+export async function updateClient(
+  clientId: string,
+  data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+    taxId?: string;
+    vatId?: string;
+    notes?: string;
+    isActive?: boolean;
+  }
+) {
+  if (!db) throw new Error("Database not configured");
+
+  const [updated] = await db.update(clients)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(clients.id, clientId))
+    .returning();
+
+  return updated;
+}
+
+export async function deleteClient(clientId: string) {
+  if (!db) throw new Error("Database not configured");
+
+  // First remove client reference from companies
+  await db.update(companies)
+    .set({ clientId: null })
+    .where(eq(companies.clientId, clientId));
+
+  await db.delete(clients).where(eq(clients.id, clientId));
+}
+
+export async function getCompaniesByClient(clientId: string) {
+  if (!db) throw new Error("Database not configured");
+
+  return db.query.companies.findMany({
+    where: eq(companies.clientId, clientId),
+    orderBy: [asc(companies.name)],
+  });
 }
 
 // ==================== COMPANIES ====================

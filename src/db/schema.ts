@@ -60,8 +60,29 @@ export const authCodes = pgTable("auth_codes", {
 });
 
 // Business tables
+
+// Mandanten (Clients) - can have multiple companies
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  street: text("street"),
+  city: text("city"),
+  postalCode: text("postal_code"),
+  country: text("country").default("Österreich"),
+  taxId: text("tax_id"), // Steuernummer
+  vatId: text("vat_id"), // UID-Nummer
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
+// Companies (Firmen) - belong to a client
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  clientId: uuid("client_id").references(() => clients.id),
   name: text("name").notNull(),
   bmdId: text("bmd_id").unique(),
   finmaticsId: text("finmatics_id"),
@@ -116,7 +137,12 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   files: many(files),
 }));
 
-export const companiesRelations = relations(companies, ({ many }) => ({
+export const clientsRelations = relations(clients, ({ many }) => ({
+  companies: many(companies),
+}));
+
+export const companiesRelations = relations(companies, ({ one, many }) => ({
+  client: one(clients, { fields: [companies.clientId], references: [clients.id] }),
   users: many(users),
   tasks: many(tasks),
 }));
