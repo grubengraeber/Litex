@@ -3,6 +3,7 @@
 import { ReactNode, useMemo } from "react";
 import { RoleContext } from "@/hooks/use-role";
 import type { UserRole } from "@/lib/constants";
+import { ROLE_PERMISSIONS } from "@/lib/constants";
 
 interface RoleProviderProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export function RoleProvider({ children, role = "customer" }: RoleProviderProps)
     role,
     isEmployee: role === "employee",
     isCustomer: role === "customer",
+    permissions: ROLE_PERMISSIONS[role],
   }), [role]);
 
   return (

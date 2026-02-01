@@ -3,16 +3,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, MessageCircle } from "lucide-react";
-
-export type TaskStatus = "on-track" | "pending-review" | "overdue";
+import { Calendar, MessageCircle, Paperclip } from "lucide-react";
+import { TRAFFIC_LIGHT_CONFIG, type TrafficLight } from "@/lib/constants";
 
 interface TaskCardProps {
   id: string;
   title: string;
   description: string;
   dueDate: string;
-  status: TaskStatus;
+  trafficLight: TrafficLight;
   progress: number;
   assignee: {
     name: string;
@@ -20,39 +19,27 @@ interface TaskCardProps {
     initials: string;
   };
   commentCount?: number;
+  fileCount?: number;
   href?: string;
+  companyName?: string;
+  amount?: string;
 }
-
-const statusConfig = {
-  "on-track": {
-    label: "Im Plan",
-    variant: "success" as const,
-    dot: "bg-green-500",
-  },
-  "pending-review": {
-    label: "Prüfung nötig",
-    variant: "warning" as const,
-    dot: "bg-yellow-500",
-  },
-  "overdue": {
-    label: "Überfällig",
-    variant: "danger" as const,
-    dot: "bg-red-500",
-  },
-};
 
 export function TaskCard({ 
   id,
   title, 
   description, 
   dueDate, 
-  status, 
+  trafficLight, 
   progress, 
   assignee,
   commentCount = 0,
+  fileCount = 0,
   href,
+  companyName,
+  amount,
 }: TaskCardProps) {
-  const config = statusConfig[status];
+  const config = TRAFFIC_LIGHT_CONFIG[trafficLight];
   const linkHref = href || `/tasks/${id}`;
 
   return (
@@ -61,19 +48,30 @@ export function TaskCard({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${config.dot}`} />
-              <Badge variant={config.variant} className="text-xs">
+              <span className={`w-3 h-3 rounded-full ${config.color}`} title={config.description} />
+              <Badge className={`text-xs ${config.bgLight} ${config.text} border-0`}>
                 {config.label}
               </Badge>
             </div>
-            {commentCount > 0 && (
-              <div className="flex items-center gap-1 text-slate-400 text-sm">
-                <MessageCircle className="w-4 h-4" />
-                <span>{commentCount}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-slate-400">
+              {fileCount > 0 && (
+                <div className="flex items-center gap-1 text-sm" title={`${fileCount} Anhänge`}>
+                  <Paperclip className="w-4 h-4" />
+                  <span>{fileCount}</span>
+                </div>
+              )}
+              {commentCount > 0 && (
+                <div className="flex items-center gap-1 text-sm" title={`${commentCount} Kommentare`}>
+                  <MessageCircle className="w-4 h-4" />
+                  <span>{commentCount}</span>
+                </div>
+              )}
+            </div>
           </div>
           <h3 className="font-semibold text-lg mt-2">{title}</h3>
+          {companyName && (
+            <span className="text-sm text-blue-600">{companyName}</span>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-500 mb-4 line-clamp-2">{description}</p>
@@ -84,6 +82,17 @@ export function TaskCard({
               <span>Fällig: {dueDate}</span>
             </div>
             
+            {amount && (
+              <span className="text-sm font-medium text-slate-700">
+                € {amount}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex-1 mr-4">
+              <Progress value={progress} className="h-1.5" />
+            </div>
             <Avatar className="w-8 h-8">
               <AvatarImage src={assignee.avatar} alt={assignee.name} />
               <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
@@ -91,12 +100,38 @@ export function TaskCard({
               </AvatarFallback>
             </Avatar>
           </div>
-
-          <div className="mt-4">
-            <Progress value={progress} className="h-1.5" />
-          </div>
         </CardContent>
       </Card>
     </Link>
   );
+}
+
+// Helper function to determine traffic light based on task data
+export function calculateTrafficLight(task: {
+  hasComments: boolean;
+  hasFiles: boolean;
+  createdAt: Date;
+  completedAt?: Date | null;
+}): TrafficLight {
+  // If completed, it's green
+  if (task.completedAt) {
+    return "green";
+  }
+  
+  // If has comments or files, it's green (bearbeitet)
+  if (task.hasComments || task.hasFiles) {
+    return "green";
+  }
+  
+  // Check 75-day deadline
+  const daysSinceCreation = Math.floor(
+    (Date.now() - task.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  
+  if (daysSinceCreation > 75) {
+    return "red";
+  }
+  
+  // Default: not processed yet
+  return "yellow";
 }

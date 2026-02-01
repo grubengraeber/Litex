@@ -2,121 +2,156 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { TaskCard, TaskStatus } from "@/components/tasks/task-card";
+import { TaskCard } from "@/components/tasks/task-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MONTHS, FILTER_OPTIONS } from "@/lib/constants";
+import { MONTHS, FILTER_OPTIONS, type TrafficLight } from "@/lib/constants";
+import { useRole } from "@/hooks/use-role";
 import { Plus, Search, SlidersHorizontal } from "lucide-react";
 
-// Mock data - erweitert
+// Mock data with traffic light system
 const allTasks = [
   {
     id: "1",
     title: "Kunden-Rechnungen Q1",
     description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal.",
     dueDate: "15. Feb",
-    status: "on-track" as TaskStatus,
+    trafficLight: "green" as TrafficLight,
     progress: 65,
     assignee: { name: "Thomas", initials: "TS" },
     commentCount: 3,
+    fileCount: 2,
     period: "02",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "12.450,00",
     isCompleted: false,
-    isPriority: true,
   },
   {
     id: "2",
     title: "Kontoauszüge abstimmen",
     description: "Monatliche Abstimmung der Bankkonten mit den Buchungen.",
     dueDate: "15. Feb",
-    status: "pending-review" as TaskStatus,
-    progress: 45,
+    trafficLight: "yellow" as TrafficLight,
+    progress: 0,
     assignee: { name: "Anna", initials: "AM" },
-    commentCount: 1,
+    commentCount: 0,
+    fileCount: 0,
     period: "02",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "0,00",
     isCompleted: false,
-    isPriority: false,
   },
   {
     id: "3",
     title: "Steuerunterlagen vorbereiten",
     description: "Zusammenstellung aller relevanten Steuerunterlagen für die Abgabe.",
     dueDate: "15. Feb",
-    status: "pending-review" as TaskStatus,
-    progress: 30,
+    trafficLight: "yellow" as TrafficLight,
+    progress: 0,
     assignee: { name: "Maria", initials: "MM" },
     commentCount: 0,
+    fileCount: 0,
     period: "02",
+    companyId: "c2",
+    companyName: "Beispiel AG",
+    amount: "0,00",
     isCompleted: false,
-    isPriority: true,
   },
   {
     id: "4",
     title: "Spesenberichte prüfen",
     description: "Überprüfung und Genehmigung der eingereichten Spesenberichte.",
     dueDate: "15. Feb",
-    status: "overdue" as TaskStatus,
-    progress: 20,
+    trafficLight: "red" as TrafficLight,
+    progress: 0,
     assignee: { name: "Thomas", initials: "TS" },
-    commentCount: 5,
+    commentCount: 0,
+    fileCount: 0,
     period: "02",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "1.234,56",
     isCompleted: false,
-    isPriority: true,
   },
   {
     id: "5",
     title: "Jahresabschluss 2024",
     description: "Abgeschlossener Jahresabschluss für das Geschäftsjahr 2024.",
     dueDate: "31. Jan",
-    status: "on-track" as TaskStatus,
+    trafficLight: "green" as TrafficLight,
     progress: 100,
     assignee: { name: "Anna", initials: "AM" },
     commentCount: 8,
+    fileCount: 5,
     period: "01",
+    companyId: "c2",
+    companyName: "Beispiel AG",
+    amount: "0,00",
     isCompleted: true,
-    isPriority: false,
   },
   {
     id: "6",
     title: "USt-Voranmeldung Januar",
     description: "Monatliche Umsatzsteuer-Voranmeldung für Januar 2025.",
     dueDate: "10. Feb",
-    status: "on-track" as TaskStatus,
+    trafficLight: "green" as TrafficLight,
     progress: 100,
     assignee: { name: "Maria", initials: "MM" },
     commentCount: 2,
+    fileCount: 1,
     period: "01",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "3.450,00",
     isCompleted: true,
-    isPriority: false,
   },
 ];
 
-function getFilteredTasks(tasks: typeof allTasks, filter: string, month: string | null) {
+// Simulated current user's company
+const CURRENT_USER_COMPANY_ID = "c1";
+
+function getFilteredTasks(
+  tasks: typeof allTasks, 
+  filter: string, 
+  month: string | null,
+  isCustomer: boolean
+) {
   let filtered = tasks;
+
+  // Role filter: customers only see their own company's tasks
+  if (isCustomer) {
+    filtered = filtered.filter(t => t.companyId === CURRENT_USER_COMPANY_ID);
+  }
 
   // Month filter
   if (month) {
     filtered = filtered.filter(t => t.period === month);
   }
 
-  // Status/type filter
+  // Status/type filter based on traffic light
   switch (filter) {
     case "completed":
       filtered = filtered.filter(t => t.isCompleted);
       break;
-    case "priorities":
-      filtered = filtered.filter(t => t.isPriority && !t.isCompleted);
+    case "yellow":
+      filtered = filtered.filter(t => t.trafficLight === "yellow" && !t.isCompleted);
+      break;
+    case "green":
+      filtered = filtered.filter(t => t.trafficLight === "green" && !t.isCompleted);
+      break;
+    case "red":
+      filtered = filtered.filter(t => t.trafficLight === "red");
       break;
     case "this-week":
-      // Simplified: show non-completed tasks
-      filtered = filtered.filter(t => !t.isCompleted);
-      break;
-    case "archived":
-      // Mock: no archived tasks
-      filtered = [];
+      // Simplified: show non-completed, non-green tasks (need attention)
+      filtered = filtered.filter(t => !t.isCompleted && t.trafficLight !== "green");
       break;
     case "all":
     default:
-      // Show all (optionally excluding completed)
+      // Show all non-completed by default
+      filtered = filtered.filter(t => !t.isCompleted);
       break;
   }
 
@@ -125,10 +160,12 @@ function getFilteredTasks(tasks: typeof allTasks, filter: string, month: string 
 
 function TasksContent() {
   const searchParams = useSearchParams();
+  const { isEmployee, isCustomer } = useRole();
+  
   const filter = searchParams.get("filter") || "all";
   const month = searchParams.get("month");
 
-  const filteredTasks = getFilteredTasks(allTasks, filter, month);
+  const filteredTasks = getFilteredTasks(allTasks, filter, month, isCustomer);
   
   const filterLabel = FILTER_OPTIONS.find(f => f.key === filter)?.label || "Alle";
   const monthLabel = month ? MONTHS.find(m => m.key === month)?.full : null;
@@ -138,17 +175,21 @@ function TasksContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Aufgaben</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isCustomer ? "Meine Aufgaben" : "Alle Aufgaben"}
+          </h1>
           <p className="text-slate-500 mt-1">
             {filterLabel} 
             {monthLabel && ` • ${monthLabel}`}
             {` • ${filteredTasks.length} Aufgaben`}
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Neue Aufgabe
-        </Button>
+        {isEmployee && (
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Neue Aufgabe
+          </Button>
+        )}
       </div>
 
       {/* Search & Filter Bar */}
@@ -166,6 +207,22 @@ function TasksContent() {
         </Button>
       </div>
 
+      {/* Traffic Light Legend */}
+      <div className="flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-yellow-500" />
+          <span className="text-slate-600">Nicht bearbeitet</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-green-500" />
+          <span className="text-slate-600">Bearbeitet</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-red-500" />
+          <span className="text-slate-600">Überfällig (&gt;75 Tage)</span>
+        </div>
+      </div>
+
       {/* Task Grid */}
       {filteredTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -176,10 +233,13 @@ function TasksContent() {
               title={task.title}
               description={task.description}
               dueDate={task.dueDate}
-              status={task.status}
+              trafficLight={task.trafficLight}
               progress={task.progress}
               assignee={task.assignee}
               commentCount={task.commentCount}
+              fileCount={task.fileCount}
+              companyName={isEmployee ? task.companyName : undefined}
+              amount={task.amount !== "0,00" ? task.amount : undefined}
             />
           ))}
         </div>
@@ -192,7 +252,7 @@ function TasksContent() {
             Keine Aufgaben gefunden
           </h3>
           <p className="text-slate-500 mt-1">
-            Versuchen Sie einen anderen Filter oder erstellen Sie eine neue Aufgabe.
+            Versuchen Sie einen anderen Filter.
           </p>
         </div>
       )}

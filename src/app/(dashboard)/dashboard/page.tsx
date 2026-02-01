@@ -2,90 +2,141 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { TaskCard, TaskStatus } from "@/components/tasks/task-card";
+import { TaskCard } from "@/components/tasks/task-card";
 import { ChatPanel } from "@/components/layout/chat-panel";
-import { MONTHS } from "@/lib/constants";
+import { MONTHS, type TrafficLight } from "@/lib/constants";
+import { useRole } from "@/hooks/use-role";
 
-// Mock data - deutsche Texte
-const tasks = [
+// Mock data with traffic light system
+const allTasks = [
   {
     id: "1",
     title: "Kunden-Rechnungen Q1",
     description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal.",
     dueDate: "15. Feb",
-    status: "on-track" as TaskStatus,
+    trafficLight: "green" as TrafficLight, // Hat Kommentare/Belege
     progress: 65,
     assignee: { name: "Thomas", initials: "TS" },
     commentCount: 3,
+    fileCount: 2,
     period: "02",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "12.450,00",
   },
   {
     id: "2",
     title: "Kontoauszüge abstimmen",
     description: "Monatliche Abstimmung der Bankkonten mit den Buchungen.",
     dueDate: "15. Feb",
-    status: "pending-review" as TaskStatus,
-    progress: 45,
+    trafficLight: "yellow" as TrafficLight, // Nicht bearbeitet
+    progress: 0,
     assignee: { name: "Anna", initials: "AM" },
-    commentCount: 1,
+    commentCount: 0,
+    fileCount: 0,
     period: "02",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "0,00",
   },
   {
     id: "3",
     title: "Steuerunterlagen vorbereiten",
     description: "Zusammenstellung aller relevanten Steuerunterlagen für die Abgabe.",
     dueDate: "15. Feb",
-    status: "pending-review" as TaskStatus,
-    progress: 30,
+    trafficLight: "yellow" as TrafficLight,
+    progress: 0,
     assignee: { name: "Maria", initials: "MM" },
     commentCount: 0,
+    fileCount: 0,
     period: "02",
+    companyId: "c2",
+    companyName: "Beispiel AG",
+    amount: "0,00",
   },
   {
     id: "4",
     title: "Spesenberichte prüfen",
     description: "Überprüfung und Genehmigung der eingereichten Spesenberichte.",
     dueDate: "15. Feb",
-    status: "overdue" as TaskStatus,
-    progress: 20,
+    trafficLight: "red" as TrafficLight, // Überfällig (>75 Tage)
+    progress: 0,
     assignee: { name: "Thomas", initials: "TS" },
-    commentCount: 5,
+    commentCount: 0,
+    fileCount: 0,
     period: "02",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "1.234,56",
   },
   {
     id: "5",
     title: "Jahresabschluss vorbereiten",
     description: "Vorarbeiten für den Jahresabschluss zusammenstellen.",
     dueDate: "28. Feb",
-    status: "pending-review" as TaskStatus,
+    trafficLight: "green" as TrafficLight,
     progress: 55,
     assignee: { name: "Anna", initials: "AM" },
     commentCount: 2,
+    fileCount: 1,
     period: "02",
+    companyId: "c2",
+    companyName: "Beispiel AG",
+    amount: "0,00",
   },
   {
     id: "6",
     title: "Lohnabrechnung März",
     description: "Vorbereitung der monatlichen Lohnabrechnungen.",
     dueDate: "1. Mär",
-    status: "on-track" as TaskStatus,
+    trafficLight: "green" as TrafficLight,
     progress: 80,
     assignee: { name: "Maria", initials: "MM" },
-    commentCount: 0,
+    commentCount: 1,
+    fileCount: 3,
     period: "03",
+    companyId: "c1",
+    companyName: "Mustermann GmbH",
+    amount: "8.500,00",
   },
 ];
 
+// Simulated current user's company (for customer role)
+const CURRENT_USER_COMPANY_ID = "c1";
+
 function DashboardContent() {
   const searchParams = useSearchParams();
+  const { isEmployee, isCustomer } = useRole();
+  
   const currentMonth = new Date().getMonth();
   const currentMonthKey = MONTHS[currentMonth].key;
   const activeMonthKey = searchParams.get("month") || currentMonthKey;
   
   const activeMonth = MONTHS.find(m => m.key === activeMonthKey) || MONTHS[currentMonth];
   
-  // Filter tasks by month
-  const filteredTasks = tasks.filter(task => task.period === activeMonthKey);
+  // Filter tasks: 
+  // - By month
+  // - Customer: only their company's tasks
+  // - Employee: all tasks
+  const filteredTasks = allTasks.filter(task => {
+    // Month filter
+    if (task.period !== activeMonthKey) return false;
+    
+    // Role-based filter: Customers only see their own tasks
+    if (isCustomer && task.companyId !== CURRENT_USER_COMPANY_ID) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Stats for overview
+  const stats = {
+    total: filteredTasks.length,
+    yellow: filteredTasks.filter(t => t.trafficLight === "yellow").length,
+    green: filteredTasks.filter(t => t.trafficLight === "green").length,
+    red: filteredTasks.filter(t => t.trafficLight === "red").length,
+  };
 
   return (
     <div className="flex h-full gap-6">
@@ -96,8 +147,31 @@ function DashboardContent() {
             {activeMonth.full.toUpperCase()} AUFGABEN
           </h1>
           <p className="text-slate-500 mt-1">
-            Verwalten und verfolgen Sie Ihre monatlichen Aufgaben
+            {isCustomer ? "Ihre offenen Aufgaben" : "Alle Mandantenaufgaben verwalten"}
           </p>
+        </div>
+
+        {/* Stats Bar */}
+        <div className="flex gap-4 mb-6">
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
+            <span className="text-sm text-slate-600">Gesamt:</span>
+            <span className="font-semibold">{stats.total}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+            <span className="text-sm text-yellow-700">Nicht bearbeitet:</span>
+            <span className="font-semibold text-yellow-700">{stats.yellow}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+            <span className="text-sm text-green-700">Bearbeitet:</span>
+            <span className="font-semibold text-green-700">{stats.green}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+            <span className="text-sm text-red-700">Überfällig:</span>
+            <span className="font-semibold text-red-700">{stats.red}</span>
+          </div>
         </div>
 
         {/* Task Grid */}
@@ -110,10 +184,13 @@ function DashboardContent() {
                 title={task.title}
                 description={task.description}
                 dueDate={task.dueDate}
-                status={task.status}
+                trafficLight={task.trafficLight}
                 progress={task.progress}
                 assignee={task.assignee}
                 commentCount={task.commentCount}
+                fileCount={task.fileCount}
+                companyName={isEmployee ? task.companyName : undefined}
+                amount={task.amount !== "0,00" ? task.amount : undefined}
               />
             ))}
           </div>
@@ -126,7 +203,7 @@ function DashboardContent() {
               Keine Aufgaben für {activeMonth.full}
             </h3>
             <p className="text-slate-500 mt-1">
-              Wählen Sie einen anderen Monat oder erstellen Sie neue Aufgaben.
+              Wählen Sie einen anderen Monat.
             </p>
           </div>
         )}

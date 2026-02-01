@@ -9,9 +9,9 @@ import {
   Settings,
   Filter,
   Calendar,
-  Star,
-  CheckCircle,
-  Archive,
+  Circle,
+  CheckCircle2,
+  AlertCircle,
   FileText,
   Building2,
 } from "lucide-react";
@@ -46,12 +46,14 @@ const customerNavigation = [
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
+// Filters based on traffic light system
 const filters = [
   { name: "Alle", icon: Filter, count: 24, filter: "all" },
   { name: "Diese Woche", icon: Calendar, count: 8, filter: "this-week" },
-  { name: "Prioritäten", icon: Star, count: 5, filter: "priorities" },
-  { name: "Erledigt", icon: CheckCircle, count: 12, filter: "completed" },
-  { name: "Archiviert", icon: Archive, count: 3, filter: "archived" },
+  { name: "Nicht bearbeitet", icon: Circle, count: 5, filter: "yellow", color: "text-yellow-500" },
+  { name: "Bearbeitet", icon: CheckCircle2, count: 12, filter: "green", color: "text-green-500" },
+  { name: "Überfällig", icon: AlertCircle, count: 3, filter: "red", color: "text-red-500" },
+  { name: "Erledigt", icon: CheckCircle2, count: 10, filter: "completed", color: "text-slate-400" },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -117,9 +119,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Filters - nur auf /tasks Seite oder wenn relevant */}
+        {/* Filters - Ampel-System */}
         <SidebarGroup>
-          <SidebarGroupLabel>Filter</SidebarGroupLabel>
+          <SidebarGroupLabel>Aufgaben-Filter</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {filters.map((filter) => (
@@ -130,7 +132,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     tooltip={filter.name}
                   >
                     <Link href={getFilterHref(filter.filter)}>
-                      <filter.icon />
+                      <filter.icon className={filter.color} />
                       <span>{filter.name}</span>
                     </Link>
                   </SidebarMenuButton>
