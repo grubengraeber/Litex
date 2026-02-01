@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Paperclip, Send, File, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Paperclip, Send, File, X, MessageSquare } from "lucide-react";
 
 export interface ChatMessage {
   id: string;
@@ -31,6 +31,10 @@ interface ChatPanelProps {
   taskId?: string;
   messages?: ChatMessage[];
   onSendMessage?: (content: string, attachments?: File[]) => void;
+  /** Allow collapsing the entire panel horizontally */
+  collapsible?: boolean;
+  /** Default collapsed state */
+  defaultCollapsed?: boolean;
 }
 
 function formatTimestamp(date: Date): string {
@@ -98,9 +102,12 @@ export function ChatPanel({
   title = "TEAM CHAT", 
   taskId,
   messages = defaultMessages,
-  onSendMessage 
+  onSendMessage,
+  collapsible = false,
+  defaultCollapsed = false,
 }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [message, setMessage] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -149,18 +156,53 @@ export function ChatPanel({
     setPendingFiles(pendingFiles.filter((_, i) => i !== index));
   };
 
+  // Collapsed state: show only a thin sidebar with expand button
+  if (collapsible && isCollapsed) {
+    return (
+      <div className="w-12 bg-white border-l border-slate-200 flex flex-col h-full">
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="h-14 flex items-center justify-center border-b border-slate-200 hover:bg-slate-50 transition-colors"
+          title="Chat öffnen"
+        >
+          <ChevronLeft className="w-4 h-4 text-slate-500" />
+        </button>
+        <div className="flex-1 flex flex-col items-center pt-4 gap-2">
+          <MessageSquare className="w-5 h-5 text-slate-400" />
+          {messages.length > 0 && (
+            <span className="text-xs text-slate-500 font-medium">{messages.length}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-80 bg-white border-l border-slate-200 flex flex-col h-full">
+    <div className={cn(
+      "bg-white border-l border-slate-200 flex flex-col h-full transition-all duration-200",
+      collapsible ? "w-80" : "w-80"
+    )}>
       {/* Header */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0"
-      >
-        <span className="font-semibold">
-          {taskId ? "KOMMENTARE" : title}
-        </span>
-        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
-      </button>
+      <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0">
+        {collapsible && (
+          <button
+            onClick={() => setIsCollapsed(true)}
+            className="p-1 -ml-1 mr-2 hover:bg-slate-100 rounded transition-colors"
+            title="Chat ausblenden"
+          >
+            <ChevronRight className="w-4 h-4 text-slate-500" />
+          </button>
+        )}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex-1 flex items-center justify-between"
+        >
+          <span className="font-semibold">
+            {taskId ? "KOMMENTARE" : title}
+          </span>
+          <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+        </button>
+      </div>
 
       {isOpen && (
         <>

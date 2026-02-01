@@ -439,11 +439,12 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Task Chat - Hidden on mobile */}
-      <div className="hidden lg:block order-2 w-80 xl:w-96 flex-shrink-0">
+      <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
         <ChatPanel 
           title="KOMMENTARE" 
           taskId={id}
           messages={taskMessages}
+          collapsible
         />
       </div>
     </div>
