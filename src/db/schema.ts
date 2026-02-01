@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, pgEnum, boolean, decimal, date, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, pgEnum, boolean, decimal, date, integer, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Enums
@@ -17,7 +17,7 @@ export const users = pgTable("users", {
   role: roleEnum("role").default("customer"),
   companyId: uuid("company_id").references(() => companies.id),
   status: userStatusEnum("status").default("pending"),
-  invitedBy: text("invited_by").references(() => users.id),
+  invitedBy: text("invited_by").references((): AnyPgColumn => users.id),
   invitedAt: timestamp("invited_at", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
