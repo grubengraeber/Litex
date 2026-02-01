@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChatPanel, type ChatMessage } from "@/components/layout/chat-panel";
+import { ChatPanel } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,36 +61,7 @@ const mockTask = {
   updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
 };
 
-// Mock chat messages
-const taskMessages: ChatMessage[] = [
-  {
-    id: "1",
-    content: "Ich habe den Entwurf hochgeladen. Bitte prüfen.",
-    sender: { name: "Max Mustermann", initials: "MM", isCurrentUser: false },
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    attachments: [
-      { id: "a1", name: "Rechnung_Q1_Entwurf.pdf", type: "pdf", size: "245 KB", status: "approved" }
-    ]
-  },
-  {
-    id: "2",
-    content: "Danke! Schaue ich mir gleich an.",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000),
-  },
-  {
-    id: "3",
-    content: "Der Beleg wurde freigegeben. ✓",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000),
-  },
-  {
-    id: "4",
-    content: "Bei Kunde Müller fehlt noch die Adressänderung. Bitte korrigieren.",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
-];
+// Chat messages will be loaded by ChatPanel component via API
 
 const FILE_STATUS_CONFIG = {
   pending: { label: "Hochgeladen", color: "bg-yellow-100 text-yellow-700", description: "Wartet auf Freigabe" },
@@ -443,7 +414,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         <ChatPanel 
           title="KOMMENTARE" 
           taskId={id}
-          messages={taskMessages}
         />
       </div>
     </div>
