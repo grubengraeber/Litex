@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Upload, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -68,12 +67,6 @@ export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
 
       {/* Right Section */}
       <div className="flex items-center gap-3">
-        {/* Upload Button */}
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-          <Upload className="w-4 h-4 mr-2" />
-          Hochladen
-        </Button>
-
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
