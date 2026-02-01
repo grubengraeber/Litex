@@ -6,6 +6,12 @@ export const authConfig: NextAuthConfig = {
   providers: [], // Providers are added in auth.ts
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
+      // TEST MODE: Allow all access when no database configured
+      // Remove this in production!
+      if (process.env.AUTH_TEST_MODE === "true") {
+        return true;
+      }
+
       const isLoggedIn = !!auth?.user;
       const { pathname } = nextUrl;
 
