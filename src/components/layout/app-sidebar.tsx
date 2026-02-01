@@ -38,7 +38,8 @@ const employeeNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Aufgaben", href: "/tasks", icon: FileText },
   { name: "Team", href: "/team", icon: Users },
-  { name: "Mandanten", href: "/companies", icon: Building2 },
+  { name: "Mandanten", href: "/mandanten", icon: Users },
+  { name: "Firmen", href: "/companies", icon: Building2 },
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
