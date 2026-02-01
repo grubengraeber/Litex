@@ -6,7 +6,14 @@ import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Search, ChevronDown, ChevronUp, Calendar, LogOut, ExternalLink } from "lucide-react";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -80,11 +87,52 @@ export function Header({ onMonthChange }: HeaderProps) {
           />
         </div>
 
-        {/* User Avatar */}
-        <Avatar className="w-8 h-8 cursor-pointer">
-          <AvatarImage src="/avatar.jpg" alt="Benutzer" />
-          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
-        </Avatar>
+        {/* User Avatar Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              <Avatar className="w-8 h-8 cursor-pointer">
+                <AvatarImage src="/avatar.jpg" alt="Benutzer" />
+                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <a
+                href="https://app.finmatics.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center cursor-pointer"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Finmatics
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href="https://www.bmd.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center cursor-pointer"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                BMD
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600 cursor-pointer"
+              onClick={() => {
+                // TODO: Implement logout logic
+                console.log("Logout clicked");
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Abmelden
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
