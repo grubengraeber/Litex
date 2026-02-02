@@ -29,8 +29,16 @@ import {
   XCircle,
   Send,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 // Mock task data
 const mockTask = {
@@ -112,6 +120,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const [task, setTask] = useState(mockTask);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnComment, setReturnComment] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   
   // Calculate traffic light
   const daysSinceCreation = Math.floor(
@@ -438,7 +447,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Task Chat - Hidden on mobile */}
+      {/* Task Chat - Desktop: side panel */}
       <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
         <ChatPanel 
           title="KOMMENTARE" 
@@ -447,6 +456,35 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           collapsible
         />
       </div>
+
+      {/* Mobile Chat Toggle Button - Fixed at bottom right */}
+      <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+        <SheetTrigger asChild>
+          <Button
+            className="lg:hidden fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700"
+            size="icon"
+          >
+            <MessageCircle className="h-6 w-6" />
+            {taskMessages.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {taskMessages.length}
+              </span>
+            )}
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="h-[80vh] p-0 rounded-t-xl">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Kommentare</SheetTitle>
+          </SheetHeader>
+          <div className="h-full flex flex-col">
+            <ChatPanel 
+              title="KOMMENTARE" 
+              taskId={id}
+              messages={taskMessages}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
