@@ -35,16 +35,23 @@ import {
 } from "@/components/ui/sidebar";
 
 const employeeNavigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, shortName: "Dashboard" },
-  { name: "Aufgaben", href: "/tasks", icon: FileText, shortName: "Aufgaben" },
-  { name: "Team", href: "/team", icon: Users, shortName: "Team" },
-  { name: "Mandanten", href: "/companies", icon: Building2, shortName: "Mandanten" },
-  { name: "Einstellungen", href: "/settings", icon: Settings, shortName: "Einstell." },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Aufgaben", href: "/tasks", icon: FileText },
+  { name: "Mandanten", href: "/companies", icon: Building2 },
 ];
 
 const customerNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meine Aufgaben", href: "/tasks", icon: FileText },
+];
+
+// Administration section - shown at the bottom
+const employeeAdministration = [
+  { name: "Team", href: "/team", icon: Users },
+  { name: "Einstellungen", href: "/settings", icon: Settings },
+];
+
+const customerAdministration = [
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
@@ -65,6 +72,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isEmployee, permissions } = useRole();
 
   const navigation = isEmployee ? employeeNavigation : customerNavigation;
+  const administration = isEmployee ? employeeAdministration : customerAdministration;
 
   const getFilterHref = (filter: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -161,19 +169,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        {/* Spacer to push Verwaltung to bottom */}
+        <div className="flex-1" />
+
+        {/* Administration Section - at the bottom */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Verwaltung</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {administration.map((item) => (
+                <SidebarMenuItem key={item.name}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+                    tooltip={item.name}
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Einstellungen">
-              <Link href="/settings">
-                <Settings />
-                <span>Einstellungen</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        {/* Footer bleibt leer - Einstellungen sind bereits in der Navigation */}
       </SidebarFooter>
 
       <SidebarRail />
