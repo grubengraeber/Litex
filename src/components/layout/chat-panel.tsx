@@ -35,6 +35,8 @@ interface ChatPanelProps {
   collapsible?: boolean;
   /** Default collapsed state */
   defaultCollapsed?: boolean;
+  /** Hide the header (for fullscreen mode where parent provides header) */
+  hideHeader?: boolean;
 }
 
 function formatTimestamp(date: Date): string {
@@ -105,6 +107,7 @@ export function ChatPanel({
   onSendMessage,
   collapsible = false,
   defaultCollapsed = false,
+  hideHeader = false,
 }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
@@ -182,29 +185,31 @@ export function ChatPanel({
       "bg-white border-l border-slate-200 flex flex-col h-full transition-all duration-200",
       collapsible ? "w-80" : "w-80"
     )}>
-      {/* Header */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0">
-        {collapsible && (
+      {/* Header - hidden in fullscreen mode where parent provides header */}
+      {!hideHeader && (
+        <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0">
+          {collapsible && (
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="p-1 -ml-1 mr-2 hover:bg-slate-100 rounded transition-colors"
+              title="Chat ausblenden"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </button>
+          )}
           <button
-            onClick={() => setIsCollapsed(true)}
-            className="p-1 -ml-1 mr-2 hover:bg-slate-100 rounded transition-colors"
-            title="Chat ausblenden"
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex-1 flex items-center justify-between"
           >
-            <ChevronRight className="w-4 h-4 text-slate-500" />
+            <span className="font-semibold">
+              {taskId ? "KOMMENTARE" : title}
+            </span>
+            <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
           </button>
-        )}
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex-1 flex items-center justify-between"
-        >
-          <span className="font-semibold">
-            {taskId ? "KOMMENTARE" : title}
-          </span>
-          <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
-        </button>
-      </div>
+        </div>
+      )}
 
-      {isOpen && (
+      {(isOpen || hideHeader) && (
         <>
           {/* Messages */}
           <div className="flex-1 overflow-auto p-4 space-y-4">

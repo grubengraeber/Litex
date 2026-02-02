@@ -488,6 +488,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               title="KOMMENTARE" 
               taskId={id}
               messages={taskMessages}
+              hideHeader
             />
           </div>
         </div>
