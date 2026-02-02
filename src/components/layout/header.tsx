@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, ChevronDown, ChevronUp, Calendar, LogOut, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, ChevronDown, ChevronLeft, ChevronRight, Calendar, LogOut, ExternalLink } from "lucide-react";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -27,7 +28,8 @@ export function Header({ onMonthChange }: HeaderProps) {
   const currentMonthKey = MONTHS[currentMonth].key;
   
   const activeMonthKey = searchParams.get("month") || currentMonthKey;
-  const [showAllMonths, setShowAllMonths] = useState(false);
+  const activeMonthIndex = MONTHS.findIndex(m => m.key === activeMonthKey);
+  const activeMonthData = MONTHS[activeMonthIndex] || MONTHS[currentMonth];
   
   // Monatsauswahl nur auf Dashboard und Aufgaben zeigen
   const showMonthFilter = pathname === "/dashboard" || pathname.startsWith("/tasks");
@@ -39,46 +41,91 @@ export function Header({ onMonthChange }: HeaderProps) {
     onMonthChange?.(monthKey);
   };
 
-  const visibleMonths = showAllMonths ? MONTHS : MONTHS.slice(0, 5);
+  const handlePrevMonth = () => {
+    const newIndex = activeMonthIndex > 0 ? activeMonthIndex - 1 : 11;
+    handleMonthClick(MONTHS[newIndex].key);
+  };
+
+  const handleNextMonth = () => {
+    const newIndex = activeMonthIndex < 11 ? activeMonthIndex + 1 : 0;
+    handleMonthClick(MONTHS[newIndex].key);
+  };
 
   return (
-    <div className="flex flex-1 items-center justify-between">
-      {/* Month Tabs */}
+    <div className="flex flex-1 items-center justify-between min-w-0">
+      {/* Month Selector */}
       {showMonthFilter && (
-        <div className="flex items-center gap-1 flex-wrap">
-          {visibleMonths.map((month) => (
-            <button
-              key={month.key}
-              onClick={() => handleMonthClick(month.key)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-                activeMonthKey === month.key
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              )}
+        <>
+          {/* Mobile: Compact dropdown with prev/next */}
+          <div className="flex md:hidden items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={handlePrevMonth}
             >
-              <Calendar className="w-3.5 h-3.5" />
-              {month.short}
-            </button>
-          ))}
-          <button 
-            onClick={() => setShowAllMonths(!showAllMonths)}
-            className="px-2 py-1.5 text-slate-400 hover:text-slate-600"
-            title={showAllMonths ? "Weniger anzeigen" : "Mehr anzeigen"}
-          >
-            {showAllMonths ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-        </div>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-8 gap-1 px-2 min-w-[90px]">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span className="font-medium">{activeMonthData.short}</span>
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                {MONTHS.map((month) => (
+                  <DropdownMenuItem
+                    key={month.key}
+                    onClick={() => handleMonthClick(month.key)}
+                    className={cn(
+                      "cursor-pointer",
+                      activeMonthKey === month.key && "bg-blue-50 text-blue-600"
+                    )}
+                  >
+                    {month.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={handleNextMonth}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Desktop: Horizontal tabs */}
+          <div className="hidden md:flex items-center gap-1 flex-wrap">
+            {MONTHS.map((month) => (
+              <button
+                key={month.key}
+                onClick={() => handleMonthClick(month.key)}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+                  activeMonthKey === month.key
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                )}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                {month.short}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Right Section */}
-      <div className="flex items-center gap-3">
-        {/* Search */}
-        <div className="relative">
+      <div className="flex items-center gap-2 ml-auto shrink-0">
+        {/* Search - hidden on mobile */}
+        <div className="relative hidden sm:block">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             type="search"
@@ -124,7 +171,6 @@ export function Header({ onMonthChange }: HeaderProps) {
             <DropdownMenuItem
               className="text-red-600 focus:text-red-600 cursor-pointer"
               onClick={() => {
-                // TODO: Implement logout logic
                 console.log("Logout clicked");
               }}
             >
