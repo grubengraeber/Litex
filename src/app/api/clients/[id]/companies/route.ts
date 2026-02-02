@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getCompaniesByClient, createCompany, updateCompany } from "@/db/queries";
+import { getCompaniesByClient, updateCompany } from "@/db/queries";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -98,6 +98,7 @@ export async function POST(
 // PATCH /api/clients/[id]/companies - Update company
 export async function PATCH(
   request: NextRequest,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
@@ -156,6 +157,7 @@ export async function PATCH(
 // DELETE /api/clients/[id]/companies - Remove company from client
 export async function DELETE(
   request: NextRequest,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   { params }: { params: { id: string } }
 ) {
   const session = await auth();

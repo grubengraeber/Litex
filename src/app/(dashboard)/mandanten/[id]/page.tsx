@@ -73,7 +73,8 @@ interface CompanyFormData {
 
 export default function MandantDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const router = useRouter(); // Reserved for future navigation
   const { isEmployee } = useRole();
   
   const [client, setClient] = useState<Client | null>(null);
