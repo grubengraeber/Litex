@@ -281,8 +281,8 @@ function DashboardContent() {
       </div>
 
       {/* Chat Panel - Hidden on mobile, shown on lg+ */}
-      <div className="hidden lg:block order-2 w-80 xl:w-96 flex-shrink-0">
-        <ChatPanel title="TEAM CHAT" />
+      <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
+        <ChatPanel title="TEAM CHAT" collapsible defaultCollapsed={false} />
       </div>
     </div>
   );
