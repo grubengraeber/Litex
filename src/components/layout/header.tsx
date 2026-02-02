@@ -60,7 +60,7 @@ export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
   const visibleMonths = showAllMonths ? MONTHS : MONTHS.slice(0, 5);
 
   return (
-    <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
+    <div className="flex flex-1 items-center justify-between gap-2 min-w-0 overflow-x-hidden">
       {/* Month Tabs - Desktop */}
       {showMonthFilter && (
         <>

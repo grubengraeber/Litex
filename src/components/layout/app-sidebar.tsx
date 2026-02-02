@@ -35,11 +35,11 @@ import {
 } from "@/components/ui/sidebar";
 
 const employeeNavigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Aufgaben", href: "/tasks", icon: FileText },
-  { name: "Team", href: "/team", icon: Users },
-  { name: "Mandanten", href: "/companies", icon: Building2 },
-  { name: "Einstellungen", href: "/settings", icon: Settings },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, shortName: "Dashboard" },
+  { name: "Aufgaben", href: "/tasks", icon: FileText, shortName: "Aufgaben" },
+  { name: "Team", href: "/team", icon: Users, shortName: "Team" },
+  { name: "Mandanten", href: "/companies", icon: Building2, shortName: "Mandanten" },
+  { name: "Einstellungen", href: "/settings", icon: Settings, shortName: "Einstell." },
 ];
 
 const customerNavigation = [
