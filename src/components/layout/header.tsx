@@ -1,28 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { NotificationBell } from "@/components/layout/notification-bell";
-import { Search, Upload, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Search, ChevronDown, ChevronUp, Calendar, LogOut, ExternalLink } from "lucide-react";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
-  showMonthFilter?: boolean;
 }
 
-export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
+export function Header({ onMonthChange }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMonth = new Date().getMonth();
   const currentMonthKey = MONTHS[currentMonth].key;
   
   const activeMonthKey = searchParams.get("month") || currentMonthKey;
   const [showAllMonths, setShowAllMonths] = useState(false);
+  
+  // Monatsauswahl nur auf Dashboard und Aufgaben zeigen
+  const showMonthFilter = pathname === "/dashboard" || pathname.startsWith("/tasks");
 
   const handleMonthClick = (monthKey: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -69,12 +77,6 @@ export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
 
       {/* Right Section */}
       <div className="flex items-center gap-3">
-        {/* Upload Button */}
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-          <Upload className="w-4 h-4 mr-2" />
-          Hochladen
-        </Button>
-
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -85,14 +87,52 @@ export function Header({ onMonthChange, showMonthFilter = true }: HeaderProps) {
           />
         </div>
 
-        {/* Notification Bell */}
-        <NotificationBell />
-
-        {/* User Avatar */}
-        <Avatar className="w-8 h-8 cursor-pointer">
-          <AvatarImage src="/avatar.jpg" alt="Benutzer" />
-          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
-        </Avatar>
+        {/* User Avatar Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              <Avatar className="w-8 h-8 cursor-pointer">
+                <AvatarImage src="/avatar.jpg" alt="Benutzer" />
+                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <a
+                href="https://app.finmatics.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center cursor-pointer"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Finmatics
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href="https://www.bmd.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center cursor-pointer"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                BMD
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600 cursor-pointer"
+              onClick={() => {
+                // TODO: Implement logout logic
+                console.log("Logout clicked");
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Abmelden
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

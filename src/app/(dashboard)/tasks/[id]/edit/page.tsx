@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { useUnsavedChanges } from "@/components/providers/unsaved-changes-provider";
 
 // Mock task data
 const mockTask = {
@@ -25,8 +25,10 @@ const mockTask = {
 export default function TaskEditPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
+  const { setDirty, markClean, navigateWithConfirm } = useUnsavedChanges();
   
-  const [formData, setFormData] = useState({
+  // Store initial values for comparison
+  const initialFormData = useMemo(() => ({
     title: mockTask.title,
     description: mockTask.description,
     bookingText: mockTask.bookingText,
@@ -34,7 +36,24 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
     documentDate: mockTask.documentDate,
     dueDate: mockTask.dueDate,
     status: mockTask.status,
-  });
+  }), []);
+
+  const [formData, setFormData] = useState(initialFormData);
+
+  // Check if form has changed from initial values
+  const hasChanges = useCallback(() => {
+    return JSON.stringify(formData) !== JSON.stringify(initialFormData);
+  }, [formData, initialFormData]);
+
+  // Update dirty state when form changes
+  useEffect(() => {
+    setDirty(hasChanges());
+  }, [formData, hasChanges, setDirty]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => markClean();
+  }, [markClean]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -45,19 +64,26 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
     e.preventDefault();
     // TODO: Save to database
     console.log("Saving:", formData);
+    markClean(); // Clear dirty state before navigation
     router.push(`/tasks/${id}`);
+  };
+
+  const handleCancel = () => {
+    navigateWithConfirm(`/tasks/${id}`);
+  };
+
+  const handleBack = () => {
+    navigateWithConfirm(`/tasks/${id}`);
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Back */}
       <div className="flex items-center justify-between">
-        <Link href={`/tasks/${id}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Zurück zur Aufgabe
-          </Button>
-        </Link>
+        <Button variant="ghost" size="sm" onClick={handleBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Zurück zur Aufgabe
+        </Button>
       </div>
 
       {/* Header */}
@@ -183,11 +209,9 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
             Löschen
           </Button>
           <div className="flex gap-3">
-            <Link href={`/tasks/${id}`}>
-              <Button type="button" variant="outline">
-                Abbrechen
-              </Button>
-            </Link>
+            <Button type="button" variant="outline" onClick={handleCancel}>
+              Abbrechen
+            </Button>
             <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
               <Save className="w-4 h-4 mr-2" />
               Speichern

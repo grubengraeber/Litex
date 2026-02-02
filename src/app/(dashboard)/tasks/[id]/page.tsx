@@ -29,8 +29,10 @@ import {
   XCircle,
   Send,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle
 } from "lucide-react";
+// Sheet imports removed - using fullscreen overlay for mobile chat
 
 // Mock task data
 const mockTask = {
@@ -83,6 +85,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const [task, setTask] = useState(mockTask);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnComment, setReturnComment] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   
   // Calculate traffic light
   const daysSinceCreation = Math.floor(
@@ -348,19 +351,21 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 return (
                   <div 
                     key={file.id}
-                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
                   >
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <div className="text-sm font-medium">{file.name}</div>
+                    {/* File info */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="w-5 h-5 text-blue-600 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{file.name}</div>
                         <div className="text-xs text-slate-400">
                           {file.size} • {file.uploadedBy} • {formatDate(file.uploadedAt)}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs ${statusConf.color} border-0`}>
+                    {/* Status & Actions - own row on mobile */}
+                    <div className="flex items-center gap-2 pl-8 sm:pl-0">
+                      <Badge className={`text-xs ${statusConf.color} border-0 shrink-0`}>
                         {file.status === "approved" && <CheckCircle className="w-3 h-3 mr-1" />}
                         {file.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
                         {file.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
@@ -409,13 +414,58 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Task Chat - Hidden on mobile */}
-      <div className="hidden lg:block order-2 w-80 xl:w-96 flex-shrink-0">
+      {/* Task Chat - Desktop: side panel */}
+      <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
         <ChatPanel 
           title="KOMMENTARE" 
           taskId={id}
+          messages={taskMessages}
+          collapsible
         />
       </div>
+
+      {/* Mobile Chat FAB - Opens fullscreen chat */}
+      <Button
+        onClick={() => setIsChatOpen(true)}
+        className="lg:hidden fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700"
+        size="icon"
+      >
+        <MessageCircle className="h-6 w-6" />
+        {taskMessages.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            {taskMessages.length}
+          </span>
+        )}
+      </Button>
+
+      {/* Mobile Chat - Fullscreen Overlay */}
+      {isChatOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-white flex flex-col">
+          {/* Header */}
+          <div className="px-4 sm:px-6 h-14 border-b border-slate-200 shrink-0">
+            <div className="max-w-xl mx-auto h-full flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Kommentare</h2>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setIsChatOpen(false)}
+                className="h-10 w-10"
+              >
+                <XCircle className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+          {/* Chat Content */}
+          <div className="flex-1 overflow-hidden">
+            <ChatPanel 
+              title="KOMMENTARE" 
+              taskId={id}
+              messages={taskMessages}
+              hideHeader
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
