@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Paperclip, Send, File, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Paperclip, Send, File, X, MessageSquare } from "lucide-react";
 
 export interface ChatMessage {
   id: string;
@@ -31,6 +31,12 @@ interface ChatPanelProps {
   taskId?: string;
   messages?: ChatMessage[];
   onSendMessage?: (content: string, attachments?: File[]) => void;
+  /** Allow collapsing the entire panel horizontally */
+  collapsible?: boolean;
+  /** Default collapsed state */
+  defaultCollapsed?: boolean;
+  /** Hide the header (for fullscreen mode where parent provides header) */
+  hideHeader?: boolean;
 }
 
 function formatTimestamp(date: Date): string {
@@ -98,9 +104,13 @@ export function ChatPanel({
   title = "TEAM CHAT", 
   taskId,
   messages = defaultMessages,
-  onSendMessage 
+  onSendMessage,
+  collapsible = false,
+  defaultCollapsed = false,
+  hideHeader = false,
 }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [message, setMessage] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -149,171 +159,226 @@ export function ChatPanel({
     setPendingFiles(pendingFiles.filter((_, i) => i !== index));
   };
 
-  return (
-    <div className="w-80 bg-white border-l border-slate-200 flex flex-col h-full">
-      {/* Header */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0"
-      >
-        <span className="font-semibold">
-          {taskId ? "KOMMENTARE" : title}
-        </span>
-        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
-      </button>
+  // Collapsed state: show only a thin sidebar with expand button
+  if (collapsible && isCollapsed) {
+    return (
+      <div className="w-12 bg-white border-l border-slate-200 flex flex-col h-full">
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="h-14 flex items-center justify-center border-b border-slate-200 hover:bg-slate-50 transition-colors"
+          title="Chat öffnen"
+        >
+          <ChevronLeft className="w-4 h-4 text-slate-500" />
+        </button>
+        <div className="flex-1 flex flex-col items-center pt-4 gap-2">
+          <MessageSquare className="w-5 h-5 text-slate-400" />
+          {messages.length > 0 && (
+            <span className="text-xs text-slate-500 font-medium">{messages.length}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-      {isOpen && (
+  return (
+    <div className={cn(
+      "bg-white flex flex-col h-full transition-all duration-200",
+      hideHeader ? "w-full" : "w-80 border-l border-slate-200"
+    )}>
+      {/* Header - hidden in fullscreen mode where parent provides header */}
+      {!hideHeader && (
+        <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200 shrink-0">
+          {collapsible && (
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="p-1 -ml-1 mr-2 hover:bg-slate-100 rounded transition-colors"
+              title="Chat ausblenden"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex-1 flex items-center justify-between"
+          >
+            <span className="font-semibold">
+              {taskId ? "KOMMENTARE" : title}
+            </span>
+            <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+          </button>
+        </div>
+      )}
+
+      {(isOpen || hideHeader) && (
         <>
           {/* Messages */}
-          <div className="flex-1 overflow-auto p-4 space-y-4">
-            {messages.length === 0 ? (
-              <div className="text-center text-slate-400 py-8">
-                <p className="text-sm">Noch keine Kommentare</p>
-                <p className="text-xs mt-1">Schreiben Sie eine Nachricht oder laden Sie einen Beleg hoch.</p>
-              </div>
-            ) : (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn("flex gap-2", msg.sender.isCurrentUser && "flex-row-reverse")}
-                >
-                  {!msg.sender.isCurrentUser && (
-                    <Avatar className="w-8 h-8 shrink-0">
-                      <AvatarImage src={msg.sender.avatar} />
-                      <AvatarFallback className="bg-slate-100 text-xs">
-                        {msg.sender.initials}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className={cn(
-                    "flex flex-col gap-1 max-w-[80%]",
-                    msg.sender.isCurrentUser && "items-end"
-                  )}>
-                    {/* Sender name */}
+          <div className={cn(
+            "flex-1 overflow-auto p-4",
+            hideHeader && "px-4 sm:px-6"
+          )}>
+            <div className={cn(
+              "space-y-4",
+              hideHeader && "max-w-xl mx-auto"
+            )}>
+              {messages.length === 0 ? (
+                <div className="text-center text-slate-400 py-8">
+                  <p className="text-sm">Noch keine Kommentare</p>
+                  <p className="text-xs mt-1">Schreiben Sie eine Nachricht oder laden Sie einen Beleg hoch.</p>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={cn("flex gap-2", msg.sender.isCurrentUser && "flex-row-reverse")}
+                  >
                     {!msg.sender.isCurrentUser && (
-                      <span className="text-xs text-slate-500 font-medium">
-                        {msg.sender.name}
-                      </span>
+                      <Avatar className="w-8 h-8 shrink-0">
+                        <AvatarImage src={msg.sender.avatar} />
+                        <AvatarFallback className="bg-slate-100 text-xs">
+                          {msg.sender.initials}
+                        </AvatarFallback>
+                      </Avatar>
                     )}
-                    
-                    {/* Message bubble */}
-                    <div
-                      className={cn(
-                        "px-3 py-2 rounded-lg text-sm",
-                        msg.sender.isCurrentUser
-                          ? "bg-blue-600 text-white rounded-br-none"
-                          : "bg-slate-100 text-slate-700 rounded-bl-none"
+                    <div className={cn(
+                      "flex flex-col gap-1 max-w-[80%]",
+                      msg.sender.isCurrentUser && "items-end"
+                    )}>
+                      {/* Sender name */}
+                      {!msg.sender.isCurrentUser && (
+                        <span className="text-xs text-slate-500 font-medium">
+                          {msg.sender.name}
+                        </span>
                       )}
-                    >
-                      {msg.content}
-                    </div>
-                    
-                    {/* Attachments */}
-                    {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="flex flex-col gap-1 mt-1">
-                        {msg.attachments.map((att) => (
-                          <div 
-                            key={att.id}
-                            className={cn(
-                              "flex items-center gap-2 px-2 py-1.5 rounded border text-xs",
-                              att.status ? FILE_STATUS_STYLES[att.status] : "bg-slate-50 border-slate-200"
-                            )}
-                          >
-                            <File className="w-3.5 h-3.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <div className="truncate font-medium">{att.name}</div>
-                              <div className="flex items-center gap-2 text-[10px] opacity-75">
-                                <span>{att.size}</span>
-                                {att.status && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{FILE_STATUS_LABELS[att.status]}</span>
-                                  </>
-                                )}
+                      
+                      {/* Message bubble */}
+                      <div
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm",
+                          msg.sender.isCurrentUser
+                            ? "bg-blue-600 text-white rounded-br-none"
+                            : "bg-slate-100 text-slate-700 rounded-bl-none"
+                        )}
+                      >
+                        {msg.content}
+                      </div>
+                      
+                      {/* Attachments */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="flex flex-col gap-1 mt-1">
+                          {msg.attachments.map((att) => (
+                            <div 
+                              key={att.id}
+                              className={cn(
+                                "flex items-center gap-2 px-2 py-1.5 rounded border text-xs",
+                                att.status ? FILE_STATUS_STYLES[att.status] : "bg-slate-50 border-slate-200"
+                              )}
+                            >
+                              <File className="w-3.5 h-3.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="truncate font-medium">{att.name}</div>
+                                <div className="flex items-center gap-2 text-[10px] opacity-75">
+                                  <span>{att.size}</span>
+                                  {att.status && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{FILE_STATUS_LABELS[att.status]}</span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Timestamp */}
-                    <span className={cn(
-                      "text-[10px] text-slate-400",
-                      msg.sender.isCurrentUser && "text-right"
-                    )}>
-                      {formatTimestamp(msg.timestamp)}
-                    </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Timestamp */}
+                      <span className={cn(
+                        "text-[10px] text-slate-400",
+                        msg.sender.isCurrentUser && "text-right"
+                      )}>
+                        {formatTimestamp(msg.timestamp)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Pending Files Preview */}
           {pendingFiles.length > 0 && (
-            <div className="px-4 py-2 border-t border-slate-100 bg-slate-50">
-              <div className="text-xs text-slate-500 mb-1">Anhänge ({pendingFiles.length})</div>
-              <div className="flex flex-col gap-1">
-                {pendingFiles.map((file, i) => (
-                  <div 
-                    key={i}
-                    className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded text-xs text-blue-700"
-                  >
-                    <File className="w-3 h-3 shrink-0" />
-                    <span className="truncate flex-1">{file.name}</span>
-                    <button 
-                      onClick={() => removeFile(i)}
-                      className="p-0.5 hover:bg-blue-100 rounded"
+            <div className={cn(
+              "px-4 py-2 border-t border-slate-100 bg-slate-50",
+              hideHeader && "px-4 sm:px-6"
+            )}>
+              <div className={cn(hideHeader && "max-w-xl mx-auto")}>
+                <div className="text-xs text-slate-500 mb-1">Anhänge ({pendingFiles.length})</div>
+                <div className="flex flex-col gap-1">
+                  {pendingFiles.map((file, i) => (
+                    <div 
+                      key={i}
+                      className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded text-xs text-blue-700"
                     >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+                      <File className="w-3 h-3 shrink-0" />
+                      <span className="truncate flex-1">{file.name}</span>
+                      <button 
+                        onClick={() => removeFile(i)}
+                        className="p-0.5 hover:bg-blue-100 rounded"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
           {/* Input */}
-          <div className="p-4 border-t border-slate-200 shrink-0">
-            <div className="flex items-center gap-2">
-              <Input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Kommentar schreiben..."
-                className="flex-1"
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,image/*"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleFileSelect}
-                title="Beleg hochladen (PDF, Bilder)"
-              >
-                <Paperclip className="w-4 h-4" />
-              </Button>
-              <Button 
-                size="icon" 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={handleSend}
-                disabled={!message.trim() && pendingFiles.length === 0}
-                title="Senden"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
+          <div className={cn(
+            "p-4 border-t border-slate-200 shrink-0",
+            hideHeader && "px-4 sm:px-6"
+          )}>
+            <div className={cn(hideHeader && "max-w-xl mx-auto")}>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Kommentar schreiben..."
+                  className="flex-1"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleFileSelect}
+                  title="Beleg hochladen (PDF, Bilder)"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+                <Button 
+                  size="icon" 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={handleSend}
+                  disabled={!message.trim() && pendingFiles.length === 0}
+                  title="Senden"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                PDF und Bilder erlaubt • Belege werden zur Freigabe eingereicht
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              PDF und Bilder erlaubt • Belege werden zur Freigabe eingereicht
-            </p>
           </div>
         </>
       )}
