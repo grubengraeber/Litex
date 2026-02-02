@@ -471,16 +471,18 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       {isChatOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-white flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 h-14 border-b border-slate-200 shrink-0">
-            <h2 className="font-semibold text-lg">Kommentare</h2>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setIsChatOpen(false)}
-              className="h-10 w-10"
-            >
-              <XCircle className="h-6 w-6" />
-            </Button>
+          <div className="px-4 sm:px-6 h-14 border-b border-slate-200 shrink-0">
+            <div className="max-w-xl mx-auto h-full flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Kommentare</h2>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setIsChatOpen(false)}
+                className="h-10 w-10"
+              >
+                <XCircle className="h-6 w-6" />
+              </Button>
+            </div>
           </div>
           {/* Chat Content */}
           <div className="flex-1 overflow-hidden">
