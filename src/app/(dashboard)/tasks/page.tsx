@@ -3,6 +3,8 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
+import { TasksTable } from "@/components/tasks/tasks-table";
+import { ViewToggle } from "@/components/tasks/view-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,8 +25,10 @@ import { fetchTasks, fetchCompanies } from "../actions";
 interface Task {
   id: string;
   bookingText: string | null;
+  bmdBookingId: string | null;
   amount: string | null;
   period: string | null;
+  dueDate: string | null;
   status: "open" | "submitted" | "completed";
   trafficLight: "green" | "yellow" | "red";
   createdAt: Date;
@@ -49,9 +53,23 @@ function TasksContent() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"grid" | "table">("grid");
 
   const filter = searchParams.get("filter") || "all";
   const month = searchParams.get("month");
+
+  // Load view preference from localStorage
+  useEffect(() => {
+    const savedView = localStorage.getItem("tasks-view");
+    if (savedView === "grid" || savedView === "table") {
+      setView(savedView);
+    }
+  }, []);
+
+  const handleViewChange = (newView: "grid" | "table") => {
+    setView(newView);
+    localStorage.setItem("tasks-view", newView);
+  };
 
   // Fetch companies on mount (for employees)
   useEffect(() => {
@@ -85,7 +103,7 @@ function TasksContent() {
   }, [month, selectedCompany]);
 
   const filteredTasks = useMemo(() => {
-    const filtered = tasks.filter((task) => {
+    return tasks.filter((task) => {
       // Status filter
       switch (filter) {
         case "open":
@@ -103,10 +121,12 @@ function TasksContent() {
           return true;
       }
     });
+  }, [tasks, filter]);
 
-    // Sort by priority (red/oldest first)
+  // For grid view, convert to TaskCard format and sort
+  const gridTasks = useMemo(() => {
     return sortTasksByPriority(
-      filtered.map((task) => ({
+      filteredTasks.map((task) => ({
         id: task.id,
         title: task.bookingText || "Keine Beschreibung",
         description: task.bookingText || "",
@@ -122,11 +142,20 @@ function TasksContent() {
         amount: task.amount || "0,00",
       }))
     );
-  }, [tasks, filter]);
+  }, [filteredTasks]);
+
+  // For table view, add comment count
+  const tableTasks = useMemo(() => {
+    return filteredTasks.map((task) => ({
+      ...task,
+      commentCount: task.comments?.length ?? 0,
+    }));
+  }, [filteredTasks]);
 
   const filterLabel =
     FILTER_OPTIONS.find((f) => f.key === filter)?.label || "Alle";
   const monthLabel = month ? MONTHS.find((m) => m.key === month)?.full : null;
+  const taskCount = view === "grid" ? gridTasks.length : tableTasks.length;
 
   if (loading) {
     return (
@@ -147,13 +176,17 @@ function TasksContent() {
           <p className="text-sm sm:text-base text-slate-500 mt-1 break-words">
             {filterLabel}
             {monthLabel && ` • ${monthLabel}`}
-            {` • ${filteredTasks.length} Aufgaben`}
-            <span className="hidden sm:inline text-xs ml-2">
-              (Sortiert nach Dringlichkeit)
-            </span>
+            {` • ${taskCount} Aufgaben`}
+            {view === "grid" && (
+              <span className="hidden sm:inline text-xs ml-2">
+                (Sortiert nach Dringlichkeit)
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          {/* View Toggle */}
+          <ViewToggle view={view} onViewChange={handleViewChange} />
           {/* Company Filter for employees */}
           {isEmployee && (
             <div className="relative">
@@ -243,26 +276,30 @@ function TasksContent() {
         </div>
       </div>
 
-      {/* Task Grid */}
-      {filteredTasks.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              id={task.id}
-              title={task.title}
-              description={task.description}
-              dueDate={task.dueDate}
-              createdAt={task.createdAt}
-              status={task.status}
-              assignee={task.assignee}
-              commentCount={task.commentCount}
-              fileCount={task.fileCount}
-              companyName={isEmployee ? task.companyName : undefined}
-              amount={task.amount !== "0,00" ? task.amount : undefined}
-            />
-          ))}
-        </div>
+      {/* Tasks View */}
+      {taskCount > 0 ? (
+        view === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {gridTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                id={task.id}
+                title={task.title}
+                description={task.description}
+                dueDate={task.dueDate}
+                createdAt={task.createdAt}
+                status={task.status}
+                assignee={task.assignee}
+                commentCount={task.commentCount}
+                fileCount={task.fileCount}
+                companyName={isEmployee ? task.companyName : undefined}
+                amount={task.amount !== "0,00" ? task.amount : undefined}
+              />
+            ))}
+          </div>
+        ) : (
+          <TasksTable tasks={tableTasks} />
+        )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
