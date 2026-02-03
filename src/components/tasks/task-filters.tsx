@@ -101,19 +101,19 @@ export function TaskFiltersBar({
             <SelectItem value="green">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-green-500" />
-                Grün
+                Neu (0-30 Tage)
               </div>
             </SelectItem>
             <SelectItem value="yellow">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                Gelb
+                Warnung (&gt;30 Tage)
               </div>
             </SelectItem>
             <SelectItem value="red">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-red-500" />
-                Rot
+                Dringend (&gt;60 Tage)
               </div>
             </SelectItem>
           </SelectContent>
