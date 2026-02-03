@@ -33,7 +33,11 @@ export function useTaskFilters() {
 
       // Update each filter
       Object.entries(updates).forEach(([key, value]) => {
-        const paramKey = key === "trafficLight" ? "traffic" : key === "search" ? "q" : key;
+        const paramKey =
+          key === "trafficLight" ? "traffic" :
+          key === "search" ? "q" :
+          key === "companyId" ? "company" :
+          key;
 
         if (value) {
           params.set(paramKey, value);

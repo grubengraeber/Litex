@@ -91,14 +91,18 @@ function DashboardContent() {
     loadTasks();
   }, [activeMonthKey, selectedCompany]);
 
-  // Filter and sort tasks
+  // Filter and sort tasks - ONLY show urgent tasks (red and yellow)
   const filteredTasks = useMemo(() => {
-    // Only show open and submitted tasks (not completed)
-    const openTasks = tasks.filter((task) => task.status !== "completed");
+    // Only show open and submitted tasks that are urgent (red or yellow)
+    const urgentTasks = tasks.filter(
+      (task) =>
+        task.status !== "completed" &&
+        (task.trafficLight === "red" || task.trafficLight === "yellow")
+    );
 
     // Sort by priority (red/oldest first)
     return sortTasksByPriority(
-      openTasks.map((task) => ({
+      urgentTasks.map((task) => ({
         id: task.id,
         title: task.bookingText || "Keine Beschreibung",
         description: task.bookingText || "",
@@ -131,12 +135,12 @@ function DashboardContent() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div className="min-w-0 flex-1">
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 break-words">
-              {activeMonth.full.toUpperCase()} AUFGABEN
+              DRINGENDE AUFGABEN
             </h1>
             <p className="text-sm lg:text-base text-slate-500 mt-1">
               {isCustomer
-                ? "Ihre offenen Aufgaben"
-                : "Alle Mandantenaufgaben verwalten"}
+                ? "Aufgaben älter als 30 Tage"
+                : `${activeMonth.full} - Nur Aufgaben mit erhöhter Priorität (>30 Tage)`}
             </p>
           </div>
 
@@ -182,43 +186,40 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* Stats Bar - Ampel Legende */}
+        {/* Urgent Stats Bar - Only Red and Yellow */}
         <div className="flex flex-wrap gap-2 lg:gap-4 mb-6">
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
-            <span className="text-xs lg:text-sm text-slate-600">Gesamt:</span>
-            <span className="font-semibold text-sm lg:text-base">
-              {stats.total}
-            </span>
-          </div>
           <div
-            className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg"
-            title="Neu (0-30 Tage)"
+            className="flex items-center gap-2 px-4 py-3 bg-red-50 rounded-lg border-2 border-red-200"
+            title="Dringend (>60 Tage)"
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-            <span className="text-xs lg:text-sm text-green-700">Neu:</span>
-            <span className="font-semibold text-sm lg:text-base text-green-700">
-              {stats.green}
+            <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-sm lg:text-base text-red-700 font-medium">
+              Dringend (&gt;60d):
+            </span>
+            <span className="font-bold text-lg lg:text-xl text-red-700">
+              {stats.red}
             </span>
           </div>
           <div
-            className="flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg"
+            className="flex items-center gap-2 px-4 py-3 bg-yellow-50 rounded-lg border-2 border-yellow-200"
             title="Warnung (>30 Tage)"
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-            <span className="text-xs lg:text-sm text-yellow-700">&gt;30d:</span>
-            <span className="font-semibold text-sm lg:text-base text-yellow-700">
+            <span className="w-3 h-3 rounded-full bg-yellow-500" />
+            <span className="text-sm lg:text-base text-yellow-700 font-medium">
+              Warnung (&gt;30d):
+            </span>
+            <span className="font-bold text-lg lg:text-xl text-yellow-700">
               {stats.yellow}
             </span>
           </div>
-          <div
-            className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg"
-            title="Dringend (>60 Tage)"
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span className="text-xs lg:text-sm text-red-700">&gt;60d:</span>
-            <span className="font-semibold text-sm lg:text-base text-red-700">
-              {stats.red}
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg ml-auto">
+            <span className="text-xs lg:text-sm text-slate-600">
+              Offene gesamt:
             </span>
+            <span className="font-semibold text-sm lg:text-base">
+              {stats.total}
+            </span>
+            <span className="text-xs text-slate-500">({stats.green} neu)</span>
           </div>
         </div>
 
@@ -244,17 +245,22 @@ function DashboardContent() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">📋</span>
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl">✓</span>
             </div>
-            <h3 className="text-lg font-medium text-slate-700">
-              Keine offenen Aufgaben für {activeMonth.full}
+            <h3 className="text-lg font-medium text-green-700">
+              Keine dringenden Aufgaben!
             </h3>
             <p className="text-slate-500 mt-1">
               {isEmployee && selectedCompany !== "all"
-                ? "Wählen Sie einen anderen Mandanten oder Monat."
-                : "Wählen Sie einen anderen Monat."}
+                ? `Keine Aufgaben älter als 30 Tage für diesen Mandanten.`
+                : `Alle Aufgaben sind aktuell (< 30 Tage alt).`}
             </p>
+            {stats.green > 0 && (
+              <p className="text-sm text-slate-600 mt-2">
+                {stats.green} neue Aufgabe{stats.green > 1 ? "n" : ""} verfügbar
+              </p>
+            )}
           </div>
         )}
       </div>

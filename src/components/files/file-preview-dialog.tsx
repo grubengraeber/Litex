@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileX, Download } from "lucide-react";
@@ -12,6 +12,8 @@ interface FilePreviewDialogProps {
     fileName: string;
     mimeType: string | null;
     storageKey: string;
+    id?: string;
+    taskId?: string;
   } | null;
 }
 
@@ -22,14 +24,53 @@ export function FilePreviewDialog({
 }: FilePreviewDialogProps) {
   const [imageError, setImageError] = useState(false);
   const [pdfError, setPdfError] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Reset error states when file changes or dialog closes
+  useEffect(() => {
+    if (!open) {
+      setImageError(false);
+      setPdfError(false);
+    }
+  }, [open, file]);
+
+  // Detect 404 in iframe
+  useEffect(() => {
+    if (!open || !iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    const checkIframeContent = () => {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc) {
+          // Check if it's a 404 page
+          const is404 =
+            iframeDoc.title?.includes("404") ||
+            iframeDoc.body?.textContent?.includes("404") ||
+            iframeDoc.body?.textContent?.includes("not be found");
+
+          if (is404) {
+            setPdfError(true);
+          }
+        }
+      } catch {
+        // Cross-origin or other access error - ignore
+      }
+    };
+
+    iframe.addEventListener("load", checkIframeContent);
+    return () => iframe.removeEventListener("load", checkIframeContent);
+  }, [open]);
 
   if (!file) return null;
 
   const isPDF = file.mimeType === "application/pdf";
   const isImage = file.mimeType?.startsWith("image/");
 
-  // For S3, construct the URL (adjust based on your S3 configuration)
-  const fileUrl = `/api/files/${file.storageKey}/download`;
+  // Construct download URL - try file ID first, then fall back to storage key
+  const fileUrl = file.id && file.taskId
+    ? `/api/tasks/${file.taskId}/files?fileId=${file.id}`
+    : `/api/files/${file.storageKey}/download`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +110,7 @@ export function FilePreviewDialog({
             )}
             {isPDF && !pdfError && (
               <iframe
+                ref={iframeRef}
                 src={fileUrl}
                 className="w-full h-full border-0"
                 title={file.fileName}
