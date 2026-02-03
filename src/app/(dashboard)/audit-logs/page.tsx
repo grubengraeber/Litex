@@ -1,76 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Search, FileDown, ChevronLeft, ChevronRight, ShieldAlert } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { de } from "date-fns/locale";
+import { Card, CardContent } from "@/components/ui/card";
+import { ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useRole } from "@/hooks/use-role";
-
-interface AuditLog {
-  id: string;
-  action: string;
-  entityType: string;
-  entityId: string | null;
-  userId: string | null;
-  userEmail: string;
-  userIpAddress: string | null;
-  userAgent: string | null;
-  createdAt: Date;
-  changes: string | null;
-  metadata: string | null;
-  status: "success" | "failed" | "error";
-  errorMessage: string | null;
-}
+import { AuditLogsDataTable } from "@/components/audit-logs/audit-logs-data-table";
+import { columns, type AuditLog } from "@/components/audit-logs/columns";
 
 export default function AuditLogsPage() {
   const { permissions } = useRole();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [actionFilter, setActionFilter] = useState("all");
-  const [entityFilter, setEntityFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const pageSize = 50;
 
   useEffect(() => {
     if (permissions.canViewAuditLogs) {
       fetchLogs();
+    } else {
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, actionFilter, entityFilter, statusFilter, permissions.canViewAuditLogs]);
+  }, [permissions.canViewAuditLogs]);
 
   async function fetchLogs() {
     setLoading(true);
     try {
+      // Fetch all logs for client-side filtering
       const params = new URLSearchParams({
-        limit: pageSize.toString(),
-        offset: (page * pageSize).toString(),
+        limit: "1000",
+        offset: "0",
       });
-
-      if (actionFilter !== "all") params.append("action", actionFilter);
-      if (entityFilter !== "all") params.append("entityType", entityFilter);
 
       const response = await fetch(`/api/audit-logs?${params}`);
       if (response.ok) {
@@ -81,7 +40,6 @@ export default function AuditLogsPage() {
             createdAt: new Date(log.createdAt),
           }))
         );
-        setHasMore(data.hasMore);
       }
     } catch (error) {
       console.error("Error fetching audit logs:", error);
@@ -91,58 +49,53 @@ export default function AuditLogsPage() {
     }
   }
 
-  const filteredLogs = logs.filter((log) => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      log.userEmail.toLowerCase().includes(query) ||
-      log.action.toLowerCase().includes(query) ||
-      log.entityType.toLowerCase().includes(query) ||
-      log.entityId?.toLowerCase().includes(query);
+  const handleExport = () => {
+    // Convert logs to CSV
+    const headers = [
+      "Zeitstempel",
+      "Benutzer",
+      "Benutzer ID",
+      "Aktion",
+      "Entität",
+      "Entität ID",
+      "IP-Adresse",
+      "Status",
+      "Fehlermeldung",
+    ];
 
-    const matchesStatus = statusFilter === "all" || log.status === statusFilter;
+    const rows = logs.map((log) => [
+      log.createdAt.toISOString(),
+      log.userEmail,
+      log.userId || "",
+      log.action,
+      log.entityType,
+      log.entityId || "",
+      log.userIpAddress || "",
+      log.status,
+      log.errorMessage || "",
+    ]);
 
-    return matchesSearch && matchesStatus;
-  });
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n");
 
-  const actionOptions = [
-    "CREATE",
-    "READ",
-    "UPDATE",
-    "DELETE",
-    "LOGIN",
-    "LOGOUT",
-    "UPLOAD",
-    "DOWNLOAD",
-    "APPROVE",
-    "REJECT",
-  ];
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `audit-logs-${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-  const entityOptions = [
-    "user",
-    "task",
-    "file",
-    "company",
-    "role",
-    "permission",
-    "comment",
-  ];
-
-  const actionColors: Record<string, string> = {
-    CREATE: "bg-green-100 text-green-800",
-    UPDATE: "bg-blue-100 text-blue-800",
-    DELETE: "bg-red-100 text-red-800",
-    LOGIN: "bg-purple-100 text-purple-800",
-    LOGOUT: "bg-slate-100 text-slate-800",
-    UPLOAD: "bg-yellow-100 text-yellow-800",
-    DOWNLOAD: "bg-orange-100 text-orange-800",
-    APPROVE: "bg-green-100 text-green-800",
-    REJECT: "bg-red-100 text-red-800",
-  };
-
-  const statusColors = {
-    success: "bg-green-100 text-green-800",
-    failed: "bg-yellow-100 text-yellow-800",
-    error: "bg-red-100 text-red-800",
+    toast.success("Audit Logs exportiert");
   };
 
   // Check permission
@@ -156,7 +109,8 @@ export default function AuditLogsPage() {
               Keine Berechtigung
             </h2>
             <p className="text-slate-500">
-              Du hast keine Berechtigung, um Audit Logs anzuzeigen. Diese Funktion ist nur für Administratoren verfügbar.
+              Du hast keine Berechtigung, um Audit Logs anzuzeigen. Diese
+              Funktion ist nur für Administratoren verfügbar.
             </p>
           </CardContent>
         </Card>
@@ -164,7 +118,7 @@ export default function AuditLogsPage() {
     );
   }
 
-  if (loading && logs.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-slate-500">Lade Audit Logs...</div>
@@ -174,178 +128,18 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
-          <p className="text-slate-500 mt-1">
-            {filteredLogs.length} {filteredLogs.length === 1 ? "Eintrag" : "Einträge"}
-          </p>
-        </div>
-        <Button variant="outline">
-          <FileDown className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
+        <p className="text-slate-500 mt-1">
+          Vollständiger Aktivitätsverlauf aller Benutzeraktionen im System
+        </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Benutzer, Aktion oder ID suchen..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Aktion" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Aktionen</SelectItem>
-            {actionOptions.map((action) => (
-              <SelectItem key={action} value={action}>
-                {action}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={entityFilter} onValueChange={setEntityFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Entität" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Entitäten</SelectItem>
-            {entityOptions.map((entity) => (
-              <SelectItem key={entity} value={entity}>
-                {entity}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Status</SelectItem>
-            <SelectItem value="success">Erfolg</SelectItem>
-            <SelectItem value="failed">Fehlgeschlagen</SelectItem>
-            <SelectItem value="error">Fehler</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Logs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Aktivitätsverlauf</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Zeitstempel</TableHead>
-                <TableHead>Benutzer</TableHead>
-                <TableHead>Aktion</TableHead>
-                <TableHead>Entität</TableHead>
-                <TableHead>IP-Adresse</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLogs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                    Keine Audit Logs gefunden
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="text-sm text-slate-600">
-                      {formatDistanceToNow(log.createdAt, {
-                        addSuffix: true,
-                        locale: de,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div className="font-medium">{log.userEmail}</div>
-                        {log.userId && (
-                          <div className="text-xs text-slate-500">{log.userId}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={actionColors[log.action] || ""}
-                      >
-                        {log.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div className="font-medium">{log.entityType}</div>
-                        {log.entityId && (
-                          <div className="text-xs text-slate-500 truncate max-w-[150px]">
-                            {log.entityId}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {log.userIpAddress || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={statusColors[log.status]}
-                      >
-                        {log.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-
-          {/* Pagination */}
-          {filteredLogs.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-slate-600">
-                Seite {page + 1}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0 || loading}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={!hasMore || loading}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <AuditLogsDataTable
+        columns={columns}
+        data={logs}
+        onExport={handleExport}
+      />
     </div>
   );
 }
