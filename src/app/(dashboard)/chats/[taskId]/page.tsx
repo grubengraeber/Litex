@@ -35,6 +35,18 @@ interface Comment {
   };
 }
 
+interface TaskFile {
+  id: string;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  createdAt: Date;
+  user: {
+    id: string;
+    name: string | null;
+  };
+}
+
 export default function ChatDetailPage({ params }: { params: { taskId: string } }) {
   const { taskId } = params;
   const [task, setTask] = useState<Task | null>(null);
@@ -65,7 +77,18 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
         if (!commentsResponse.ok) throw new Error("Failed to fetch comments");
         const { comments: commentsData } = await commentsResponse.json();
 
-        // Transform to ChatMessage format
+        // Fetch files
+        const filesResponse = await fetch(`/api/tasks/${taskId}/files`);
+        let taskFiles: TaskFile[] = [];
+        if (filesResponse.ok) {
+          const { files } = await filesResponse.json() as { files: TaskFile[] };
+          taskFiles = files.map((file) => ({
+            ...file,
+            createdAt: new Date(file.createdAt),
+          }));
+        }
+
+        // Transform to ChatMessage format and attach files
         const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
           const initials = comment.user.name
             ? comment.user.name
@@ -76,6 +99,22 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
                 .slice(0, 2)
             : comment.user.email.slice(0, 2).toUpperCase();
 
+          const commentTime = new Date(comment.createdAt).getTime();
+
+          // Find files created within 1 minute of this comment
+          const relatedFiles = taskFiles.filter(file => {
+            const fileTime = new Date(file.createdAt).getTime();
+            const timeDiff = Math.abs(fileTime - commentTime);
+            return timeDiff < 60000; // Within 1 minute
+          });
+
+          const attachments = relatedFiles.map(file => ({
+            id: file.id,
+            name: file.fileName,
+            type: file.mimeType || 'application/octet-stream',
+            size: file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Unknown',
+          }));
+
           return {
             id: comment.id,
             content: comment.content,
@@ -85,6 +124,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
               isCurrentUser: comment.user.id === userId,
             },
             timestamp: new Date(comment.createdAt),
+            attachments: attachments.length > 0 ? attachments : undefined,
           };
         });
 
@@ -100,20 +140,48 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
     loadData();
   }, [taskId]);
 
-  // Poll for new comments
+  // Poll for new comments and files
   useEffect(() => {
     if (!currentUserId) return;
 
     const intervalId = setInterval(async () => {
       try {
+        // Fetch comments
         const response = await fetch(`/api/tasks/${taskId}/comments`);
         if (!response.ok) return;
-
         const { comments: commentsData } = await response.json();
+
+        // Fetch files
+        const filesResponse = await fetch(`/api/tasks/${taskId}/files`);
+        let taskFiles: TaskFile[] = [];
+        if (filesResponse.ok) {
+          const { files } = await filesResponse.json() as { files: TaskFile[] };
+          taskFiles = files.map((file) => ({
+            ...file,
+            createdAt: new Date(file.createdAt),
+          }));
+        }
+
         const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
           const initials = comment.user.name
             ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
             : comment.user.email.slice(0, 2).toUpperCase();
+
+          const commentTime = new Date(comment.createdAt).getTime();
+
+          // Find files created within 1 minute of this comment
+          const relatedFiles = taskFiles.filter(file => {
+            const fileTime = new Date(file.createdAt).getTime();
+            const timeDiff = Math.abs(fileTime - commentTime);
+            return timeDiff < 60000; // Within 1 minute
+          });
+
+          const attachments = relatedFiles.map(file => ({
+            id: file.id,
+            name: file.fileName,
+            type: file.mimeType || 'application/octet-stream',
+            size: file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Unknown',
+          }));
 
           return {
             id: comment.id,
@@ -124,6 +192,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
               isCurrentUser: comment.user.id === currentUserId,
             },
             timestamp: new Date(comment.createdAt),
+            attachments: attachments.length > 0 ? attachments : undefined,
           };
         });
 
@@ -140,6 +209,8 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
     if (!content.trim() && !attachments?.length) return;
 
     try {
+      const uploadedFiles: { name: string; size: number; type: string }[] = [];
+
       // Upload files first if any
       if (attachments && attachments.length > 0) {
         for (const file of attachments) {
@@ -189,30 +260,73 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
           if (!confirmResponse.ok) {
             throw new Error("Failed to confirm upload");
           }
+
+          uploadedFiles.push({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+          });
         }
 
         toast.success(`${attachments.length} ${attachments.length === 1 ? 'Datei' : 'Dateien'} hochgeladen`);
       }
 
-      // Send comment if content exists
-      if (content.trim()) {
+      // Create comment with file information
+      let commentText = content.trim();
+
+      // If files were uploaded, add them to the comment
+      if (uploadedFiles.length > 0 && !commentText) {
+        commentText = uploadedFiles.map(f => `📎 ${f.name}`).join('\n');
+      } else if (uploadedFiles.length > 0) {
+        commentText += '\n\n' + uploadedFiles.map(f => `📎 ${f.name}`).join('\n');
+      }
+
+      // Send comment
+      if (commentText) {
         const response = await fetch(`/api/tasks/${taskId}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content: commentText }),
         });
 
         if (!response.ok) throw new Error("Failed to send message");
       }
 
-      // Refresh comments
+      // Refresh comments and files
       const commentsResponse = await fetch(`/api/tasks/${taskId}/comments`);
       const { comments: commentsData } = await commentsResponse.json();
+
+      // Fetch files
+      const filesResponse = await fetch(`/api/tasks/${taskId}/files`);
+      let taskFiles: TaskFile[] = [];
+      if (filesResponse.ok) {
+        const { files } = await filesResponse.json() as { files: TaskFile[] };
+        taskFiles = files.map((file) => ({
+          ...file,
+          createdAt: new Date(file.createdAt),
+        }));
+      }
 
       const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
         const initials = comment.user.name
           ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
           : comment.user.email.slice(0, 2).toUpperCase();
+
+        const commentTime = new Date(comment.createdAt).getTime();
+
+        // Find files created within 1 minute of this comment
+        const relatedFiles = taskFiles.filter(file => {
+          const fileTime = new Date(file.createdAt).getTime();
+          const timeDiff = Math.abs(fileTime - commentTime);
+          return timeDiff < 60000; // Within 1 minute
+        });
+
+        const attachments = relatedFiles.map(file => ({
+          id: file.id,
+          name: file.fileName,
+          type: file.mimeType || 'application/octet-stream',
+          size: file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Unknown',
+        }));
 
         return {
           id: comment.id,
@@ -223,6 +337,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
             isCurrentUser: comment.user.id === currentUserId,
           },
           timestamp: new Date(comment.createdAt),
+          attachments: attachments.length > 0 ? attachments : undefined,
         };
       });
 
