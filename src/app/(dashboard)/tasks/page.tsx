@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
-import { TasksTable } from "@/components/tasks/tasks-table";
+import { TasksDataTable } from "@/components/tasks/tasks-data-table";
 import { ViewToggle } from "@/components/tasks/view-toggle";
 import { TaskFiltersBar } from "@/components/tasks/task-filters";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
@@ -227,7 +227,7 @@ function TasksContent() {
             ))}
           </div>
         ) : (
-          <TasksTable tasks={tableTasks} />
+          <TasksDataTable tasks={tableTasks} showCompanyColumn={isEmployee} />
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
