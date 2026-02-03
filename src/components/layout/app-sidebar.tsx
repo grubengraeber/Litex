@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   FileText,
   Building2,
-  UserPlus,
   MessageSquare,
   Shield,
   ShieldCheck,
@@ -181,23 +180,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* Quick Actions for Employees */}
-        {isEmployee && permissions.canInviteUsers && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Aktionen</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Benutzer einladen">
-                    <UserPlus />
-                    <span>Benutzer einladen</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
         {/* Spacer to push Verwaltung to bottom */}
         <div className="flex-1" />

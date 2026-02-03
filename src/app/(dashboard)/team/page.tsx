@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ViewToggle } from "@/components/tasks/view-toggle";
 import { TeamDataTable } from "@/components/team/team-data-table";
+import { InviteUserDialog } from "@/components/users/invite-user-dialog";
 import { useRole } from "@/hooks/use-role";
 import {
-  Plus,
   Search,
   Mail,
   MoreHorizontal,
@@ -114,20 +114,36 @@ function TeamContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">Team</h1>
           <p className="text-slate-500 mt-1">
             {filteredMembers.length} {filteredMembers.length === 1 ? "Teammitglied" : "Teammitglieder"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ViewToggle view={view} onViewChange={handleViewChange} />
           {isEmployee && (
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Mitarbeiter einladen
-            </Button>
+            <>
+              {/* Desktop: Full button with text */}
+              <div className="hidden sm:block">
+                <InviteUserDialog
+                  buttonText="Mitarbeiter einladen"
+                  buttonVariant="default"
+                  buttonClassName="bg-blue-600 hover:bg-blue-700"
+                  onInviteSuccess={fetchTeam}
+                />
+              </div>
+              {/* Mobile: Icon only */}
+              <div className="sm:hidden">
+                <InviteUserDialog
+                  buttonVariant="default"
+                  buttonClassName="bg-blue-600 hover:bg-blue-700"
+                  iconOnly
+                  onInviteSuccess={fetchTeam}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>

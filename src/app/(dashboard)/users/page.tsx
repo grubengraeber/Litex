@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ViewToggle } from "@/components/tasks/view-toggle";
 import { UsersDataTable } from "@/components/users/users-data-table";
+import { InviteUserDialog } from "@/components/users/invite-user-dialog";
 import {
   Dialog,
   DialogContent,
@@ -274,12 +275,32 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">Benutzer-Verwaltung</h1>
           <p className="text-slate-500 mt-1">{filteredUsers.length} Benutzer</p>
         </div>
-        <ViewToggle view={view} onViewChange={handleViewChange} />
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <ViewToggle view={view} onViewChange={handleViewChange} />
+          {/* Desktop: Full button with text */}
+          <div className="hidden sm:block">
+            <InviteUserDialog
+              buttonText="Benutzer einladen"
+              buttonVariant="default"
+              buttonClassName="bg-blue-600 hover:bg-blue-700"
+              onInviteSuccess={fetchUsers}
+            />
+          </div>
+          {/* Mobile: Icon only */}
+          <div className="sm:hidden">
+            <InviteUserDialog
+              buttonVariant="default"
+              buttonClassName="bg-blue-600 hover:bg-blue-700"
+              iconOnly
+              onInviteSuccess={fetchUsers}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Search */}
