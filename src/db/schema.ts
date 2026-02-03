@@ -26,6 +26,8 @@ export const users = pgTable("users", {
   image: text("image"),
   role: roleEnum("role").default("customer"),
   companyId: uuid("company_id").references(() => companies.id),
+  finmaticsUserId: text("finmatics_user_id"),
+  bmdUserId: text("bmd_user_id"),
   status: userStatusEnum("status").default("pending"),
   invitedBy: text("invited_by").references((): AnyPgColumn => users.id),
   invitedAt: timestamp("invited_at", { mode: "date" }),
