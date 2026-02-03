@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Calendar, LogOut, ExternalLink } from "lucide-react";
+import Cookies from "js-cookie";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -25,13 +26,25 @@ export function Header({ onMonthChange }: HeaderProps) {
   const searchParams = useSearchParams();
   const currentMonth = new Date().getMonth();
   const currentMonthKey = MONTHS[currentMonth].key;
-  
+
   const activeMonthKey = searchParams.get("month") || currentMonthKey;
   const activeMonthIndex = MONTHS.findIndex(m => m.key === activeMonthKey);
   const activeMonthData = MONTHS[activeMonthIndex] || MONTHS[currentMonth];
-  
+
   // Monatsauswahl nur auf Dashboard und Aufgaben zeigen
   const showMonthFilter = pathname === "/dashboard" || pathname.startsWith("/tasks");
+
+  const handleLogout = () => {
+    // Clear session cookies
+    const cookieName = process.env.NODE_ENV === "production"
+      ? "__Secure-next-auth.session-token"
+      : "next-auth.session-token";
+
+    Cookies.remove(cookieName);
+
+    // Redirect to login page
+    router.push("/login");
+  };
 
   const handleMonthClick = (monthKey: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -169,9 +182,7 @@ export function Header({ onMonthChange }: HeaderProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-600 focus:text-red-600 cursor-pointer"
-              onClick={() => {
-                console.log("Logout clicked");
-              }}
+              onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
               Abmelden
