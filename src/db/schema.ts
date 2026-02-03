@@ -16,6 +16,17 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "file_rejected"
 ]);
 export const fileStatusEnum = pgEnum("file_status", ["pending", "approved", "rejected"]);
+export const auditActionEnum = pgEnum("audit_action", [
+  // Auth
+  "LOGIN", "LOGOUT", "LOGIN_FAILED",
+  // CRUD
+  "CREATE", "READ", "UPDATE", "DELETE",
+  // Special actions
+  "APPROVE", "REJECT", "SUBMIT", "ASSIGN", "UNASSIGN", "DOWNLOAD", "UPLOAD", "EXPORT",
+  // Permissions
+  "GRANT_PERMISSION", "REVOKE_PERMISSION", "ASSIGN_ROLE", "REMOVE_ROLE"
+]);
+export const auditStatusEnum = pgEnum("audit_status", ["success", "failed", "error"]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -218,6 +229,33 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+// Audit Logs - Track all significant actions across the system
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+  // What happened
+  action: auditActionEnum("action").notNull(),
+  entityType: text("entity_type").notNull(), // user, task, file, company, role, etc.
+  entityId: text("entity_id"), // ID of the affected entity
+
+  // Who did it
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  userEmail: text("user_email").notNull(), // Store email for record keeping
+  userIpAddress: text("user_ip_address"), // IPv4/IPv6
+  userAgent: text("user_agent"), // Browser/client info
+
+  // When
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+
+  // Context
+  changes: text("changes"), // JSON string of before/after values for updates
+  metadata: text("metadata"), // JSON string for additional context
+
+  // Status
+  status: auditStatusEnum("status").default("success"),
+  errorMessage: text("error_message"),
+});
+
 // Comment Read Relations
 export const commentReadsRelations = relations(commentReads, ({ one }) => ({
   comment: one(comments, { fields: [commentReads.commentId], references: [comments.id] }),
@@ -260,4 +298,9 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
 export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
   user: one(users, { fields: [teamMembers.userId], references: [users.id] }),
   team: one(teams, { fields: [teamMembers.teamId], references: [teams.id] }),
+}));
+
+// Audit Logs Relations
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, { fields: [auditLogs.userId], references: [users.id] }),
 }));

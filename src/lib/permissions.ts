@@ -54,6 +54,9 @@ export const PERMISSIONS = {
   EDIT_ROLES: "edit_roles",
   DELETE_ROLES: "delete_roles",
   ASSIGN_PERMISSIONS: "assign_permissions",
+
+  // Audit Logs
+  VIEW_AUDIT_LOGS: "view_audit_logs",
 } as const;
 
 export type PermissionName = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
