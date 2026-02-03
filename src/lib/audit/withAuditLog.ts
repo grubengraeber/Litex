@@ -66,6 +66,7 @@ export function withAuditLog<TParams = Record<string, never>>(
 
     const session = await auth();
     const startTime = Date.now();
+    const method = req.method as HttpMethod;
 
     // Execute the route handler
     const response = await handler(req, context);
@@ -74,9 +75,6 @@ export function withAuditLog<TParams = Record<string, never>>(
     if (!session?.user?.email) {
       return response;
     }
-
-    // Determine action based on HTTP method
-    const method = req.method as HttpMethod;
     let action = config.action;
 
     if (config.auto && !action) {

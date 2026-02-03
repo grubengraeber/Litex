@@ -9,6 +9,11 @@ import { TRAFFIC_LIGHT_CONFIG, TASK_STATUS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChatView } from "@/components/chats/chat-view";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 interface TaskWithComments {
   id: string;
@@ -59,6 +64,7 @@ function ChatsContent() {
   const [tasks, setTasks] = useState<TaskWithComments[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -105,6 +111,18 @@ function ChatsContent() {
 
     fetchTasks();
   }, [selectedTaskId, router]);
+
+  // Close mobile sheet when resizing to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && mobileSheetOpen) {
+        setMobileSheetOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [mobileSheetOpen]);
 
   const filteredTasks = tasks.filter(
     (task) =>
@@ -173,7 +191,13 @@ function ChatsContent() {
             return (
               <div
                 key={task.id}
-                onClick={() => router.push(`/chats?task=${task.id}`)}
+                onClick={() => {
+                  router.push(`/chats?task=${task.id}`);
+                  // Only open sheet on mobile (< 768px)
+                  if (window.innerWidth < 768) {
+                    setMobileSheetOpen(true);
+                  }
+                }}
                 className={cn(
                   "p-4 border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50",
                   isSelected && "bg-blue-50 border-l-4 border-l-blue-600"
@@ -237,7 +261,7 @@ function ChatsContent() {
         </div>
       </div>
 
-      {/* Right Side - Chat Content */}
+      {/* Right Side - Chat Content (Desktop) */}
       <div className="flex-1 bg-slate-50 hidden md:flex flex-col">
         {selectedTaskId ? (
           <Suspense fallback={
@@ -259,6 +283,31 @@ function ChatsContent() {
           </div>
         )}
       </div>
+
+      {/* Mobile Bottom Sheet */}
+      <Sheet open={mobileSheetOpen && !!selectedTaskId} onOpenChange={setMobileSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="h-[90vh] p-0 md:hidden"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-slate-200 pr-16">
+            <SheetTitle className="text-lg font-semibold">
+              Chat
+            </SheetTitle>
+          </div>
+          {selectedTaskId && (
+            <div className="h-[calc(90vh-4rem)] overflow-hidden">
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-slate-500">Lade Chat...</div>
+                </div>
+              }>
+                <ChatView taskId={selectedTaskId} />
+              </Suspense>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

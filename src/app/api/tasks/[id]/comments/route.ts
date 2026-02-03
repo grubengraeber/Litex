@@ -10,10 +10,10 @@ const createCommentSchema = z.object({
 });
 
 // GET /api/tasks/[id]/comments - List comments for a task
-export async function GET(
+export const GET = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -53,7 +53,13 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, {
+  action: "READ",
+  entityType: "chat",
+  getMetadata: (req) => ({
+    taskId: req.nextUrl.pathname.split('/')[3],
+  }),
+});
 
 // POST /api/tasks/[id]/comments - Add comment
 export const POST = withAuditLog(async (

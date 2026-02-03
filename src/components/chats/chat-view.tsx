@@ -215,10 +215,35 @@ export function ChatView({ taskId }: { taskId: string }) {
         throw new Error("Failed to send message");
       }
 
+      const { comment: newComment } = await response.json();
+
+      // Optimistically add the new comment to state immediately
+      const initials = newComment.user.name
+        ? newComment.user.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+        : newComment.user.email.slice(0, 2).toUpperCase();
+
+      const newMessage: ChatMessage = {
+        id: newComment.id,
+        content: newComment.content,
+        sender: {
+          name: newComment.user.name || newComment.user.email,
+          initials,
+          isCurrentUser: true,
+        },
+        timestamp: new Date(newComment.createdAt),
+        attachments: fileIds.length > 0 ? fileIds.map(id => ({
+          id,
+          name: "[Datei]",
+          type: "application/octet-stream",
+          size: "",
+        })) : undefined,
+      };
+
+      setComments(prev => [...prev, newMessage]);
       toast.success("Nachricht gesendet");
 
-      // Refresh comments
-      await loadComments();
+      // Refresh in background to get accurate data
+      loadComments().catch(console.error);
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Nachricht konnte nicht gesendet werden");

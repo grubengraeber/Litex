@@ -86,7 +86,15 @@ export const GET = withAuditLog(async (
       { status: 500 }
     );
   }
-}, { auto: true, entityType: "file", skip: () => true });
+}, {
+  action: "DOWNLOAD",
+  entityType: "file",
+  skip: (req) => !req.nextUrl.searchParams.get("fileId"), // Only log when downloading specific file
+  getEntityId: (req) => req.nextUrl.searchParams.get("fileId") || undefined,
+  getMetadata: (req) => ({
+    taskId: req.nextUrl.pathname.split('/')[3],
+  }),
+});
 
 // POST /api/tasks/[id]/files - Request upload URL or confirm upload
 export const POST = withAuditLog(async (
