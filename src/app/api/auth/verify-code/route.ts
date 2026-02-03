@@ -14,20 +14,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, code } = verifyCodeSchema.parse(body);
 
-    // TEST MODE: Accept code 123456 when no database
+    // TEST MODE: Accept code 123456 and use a real seeded employee user
     if (!db || process.env.AUTH_TEST_MODE === "true") {
       if (code === "123456") {
+        // Use the first employee from seed data (thomas@litex.com)
+        // In production, you should query the database to get a real user
+        const testUser = {
+          id: "5410907e-58cb-4b39-ac46-9ffacab59d3e", // Thomas Schmidt from seed
+          email: "thomas@litex.com",
+          name: "Thomas Schmidt",
+          role: "employee" as const,
+          companyId: null,
+          status: "active" as const,
+        };
+
         const testSessionToken = "test-session-" + Date.now();
         const response = NextResponse.json({
           success: true,
-          user: {
-            id: "test-user",
-            email: email,
-            name: "Test User",
-            role: "employee",
-            companyId: null,
-            status: "active",
-          },
+          user: testUser,
         });
 
         const cookieName = process.env.NODE_ENV === "production"
