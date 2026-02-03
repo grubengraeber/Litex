@@ -136,9 +136,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   comments: many(comments),
 }));
 
-export const commentsRelations = relations(comments, ({ one }) => ({
+export const commentsRelations = relations(comments, ({ one, many }) => ({
   task: one(tasks, { fields: [comments.taskId], references: [tasks.id] }),
   user: one(users, { fields: [comments.userId], references: [users.id] }),
+  reads: many(commentReads),
 }));
 
 export const filesRelations = relations(files, ({ one }) => ({
@@ -146,19 +147,10 @@ export const filesRelations = relations(files, ({ one }) => ({
   user: one(users, { fields: [files.uploadedBy], references: [users.id] }),
 }));
 
-// Chat Messages - "Next Level" with read receipts
-export const messages = pgTable("messages", {
+// Comment Read Receipts - like WhatsApp ✓✓
+export const commentReads = pgTable("comment_reads", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
-  senderId: text("sender_id").notNull().references(() => users.id),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
-});
-
-// Message Read Receipts - like WhatsApp ✓✓
-export const messageReads = pgTable("message_reads", {
-  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  messageId: uuid("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+  commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id),
   readAt: timestamp("read_at", { mode: "date" }).defaultNow(),
 });
@@ -171,25 +163,19 @@ export const notifications = pgTable("notifications", {
   title: text("title").notNull(),
   message: text("message"),
   taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }),
-  messageId: uuid("message_id").references(() => messages.id, { onDelete: "cascade" }),
+  commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
-// Message Relations
-export const messagesRelations = relations(messages, ({ one, many }) => ({
-  task: one(tasks, { fields: [messages.taskId], references: [tasks.id] }),
-  sender: one(users, { fields: [messages.senderId], references: [users.id] }),
-  reads: many(messageReads),
-}));
-
-export const messageReadsRelations = relations(messageReads, ({ one }) => ({
-  message: one(messages, { fields: [messageReads.messageId], references: [messages.id] }),
-  user: one(users, { fields: [messageReads.userId], references: [users.id] }),
+// Comment Read Relations
+export const commentReadsRelations = relations(commentReads, ({ one }) => ({
+  comment: one(comments, { fields: [commentReads.commentId], references: [comments.id] }),
+  user: one(users, { fields: [commentReads.userId], references: [users.id] }),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
   task: one(tasks, { fields: [notifications.taskId], references: [tasks.id] }),
-  sourceMessage: one(messages, { fields: [notifications.messageId], references: [messages.id] }),
+  sourceComment: one(comments, { fields: [notifications.commentId], references: [comments.id] }),
 }));

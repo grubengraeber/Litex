@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { messages, notifications, users, tasks } from "@/db/schema";
+import { comments, notifications, users, tasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// GET /api/tasks/[id]/messages - Load messages for a task
+// GET /api/tasks/[id]/messages - Load comments for a task
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -21,27 +21,27 @@ export async function GET(
 
     const taskId = params.id;
 
-    // Get messages with sender info
-    const taskMessages = await db
+    // Get comments with sender info
+    const taskComments = await db
       .select({
-        id: messages.id,
-        content: messages.content,
-        createdAt: messages.createdAt,
-        senderId: messages.senderId,
-        senderName: users.name,
-        senderEmail: users.email,
+        id: comments.id,
+        content: comments.content,
+        createdAt: comments.createdAt,
+        userId: comments.userId,
+        userName: users.name,
+        userEmail: users.email,
       })
-      .from(messages)
-      .innerJoin(users, eq(messages.senderId, users.id))
-      .where(eq(messages.taskId, taskId))
-      .orderBy(messages.createdAt);
+      .from(comments)
+      .innerJoin(users, eq(comments.userId, users.id))
+      .where(eq(comments.taskId, taskId))
+      .orderBy(comments.createdAt);
 
-    // Get all read receipts for this task's messages
-    const messageIds = taskMessages.map((m) => m.id);
+    // Get all read receipts for this task's comments
+    const commentIds = taskComments.map((c) => c.id);
     const allReads =
-      messageIds.length > 0
-        ? await db.query.messageReads.findMany({
-            where: (mr, { inArray }) => inArray(mr.messageId, messageIds),
+      commentIds.length > 0
+        ? await db.query.commentReads.findMany({
+            where: (cr, { inArray }) => inArray(cr.commentId, commentIds),
             with: {
               user: {
                 columns: { id: true, name: true },
@@ -56,10 +56,10 @@ export async function GET(
       Array<{ userId: string; userName: string | null; readAt: Date | null }>
     > = {};
     for (const read of allReads) {
-      if (!readsMap[read.messageId]) {
-        readsMap[read.messageId] = [];
+      if (!readsMap[read.commentId]) {
+        readsMap[read.commentId] = [];
       }
-      readsMap[read.messageId].push({
+      readsMap[read.commentId].push({
         userId: read.userId,
         userName: read.user?.name ?? null,
         readAt: read.readAt,
@@ -67,31 +67,31 @@ export async function GET(
     }
 
     // Format response
-    const formattedMessages = taskMessages.map((msg) => ({
-      id: msg.id,
-      content: msg.content,
-      createdAt: msg.createdAt,
+    const formattedMessages = taskComments.map((comment) => ({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt,
       sender: {
-        id: msg.senderId,
-        name: msg.senderName,
-        email: msg.senderEmail,
-        initials: getInitials(msg.senderName || msg.senderEmail || "?"),
-        isCurrentUser: msg.senderId === session.user.id,
+        id: comment.userId,
+        name: comment.userName,
+        email: comment.userEmail,
+        initials: getInitials(comment.userName || comment.userEmail || "?"),
+        isCurrentUser: comment.userId === session.user.id,
       },
-      reads: readsMap[msg.id] || [],
+      reads: readsMap[comment.id] || [],
     }));
 
     return NextResponse.json({ messages: formattedMessages });
   } catch (error) {
-    console.error("Error fetching messages:", error);
+    console.error("Error fetching comments:", error);
     return NextResponse.json(
-      { error: "Failed to fetch messages" },
+      { error: "Failed to fetch comments" },
       { status: 500 }
     );
   }
 }
 
-// POST /api/tasks/[id]/messages - Send a new message
+// POST /api/tasks/[id]/messages - Send a new comment
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -111,7 +111,7 @@ export async function POST(
 
     if (!content?.trim()) {
       return NextResponse.json(
-        { error: "Message content required" },
+        { error: "Comment content required" },
         { status: 400 }
       );
     }
@@ -132,12 +132,12 @@ export async function POST(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Create message
-    const [newMessage] = await db
-      .insert(messages)
+    // Create comment
+    const [newComment] = await db
+      .insert(comments)
       .values({
         taskId,
-        senderId: session.user.id,
+        userId: session.user.id,
         content: content.trim(),
       })
       .returning();
@@ -152,12 +152,12 @@ export async function POST(
         otherUsers.map((user) => ({
           userId: user.id,
           type: "new_message" as const,
-          title: "Neue Nachricht",
+          title: "Neuer Kommentar",
           message: `${senderName}: ${content.substring(0, 100)}${
             content.length > 100 ? "..." : ""
           }`,
           taskId,
-          messageId: newMessage.id,
+          commentId: newComment.id,
         }))
       );
     }
@@ -170,9 +170,9 @@ export async function POST(
     return NextResponse.json(
       {
         message: {
-          id: newMessage.id,
-          content: newMessage.content,
-          createdAt: newMessage.createdAt,
+          id: newComment.id,
+          content: newComment.content,
+          createdAt: newComment.createdAt,
           sender: {
             id: session.user.id,
             name: sender?.name,
@@ -186,9 +186,9 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating message:", error);
+    console.error("Error creating comment:", error);
     return NextResponse.json(
-      { error: "Failed to create message" },
+      { error: "Failed to create comment" },
       { status: 500 }
     );
   }
