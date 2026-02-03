@@ -19,7 +19,8 @@ async function applyMigration() {
   const db = drizzle(client);
 
   try {
-    const migrationPath = join(process.cwd(), "drizzle", "0005_add_user_external_ids.sql");
+    const migrationFile = process.argv[2] || "0005_add_user_external_ids.sql";
+    const migrationPath = join(process.cwd(), "drizzle", migrationFile);
     const migrationSQL = readFileSync(migrationPath, "utf-8");
 
     console.log("Applying migration...");
