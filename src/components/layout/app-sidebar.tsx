@@ -20,6 +20,7 @@ import {
   Shield,
   ShieldCheck,
   UserCog,
+  FolderOpen,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
 
@@ -42,6 +43,7 @@ const employeeNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Aufgaben", href: "/tasks", icon: FileText },
   { name: "Chats", href: "/chats", icon: MessageSquare },
+  { name: "Dateien", href: "/files", icon: FolderOpen },
   { name: "Mandanten", href: "/companies", icon: Building2 },
 ];
 
@@ -49,6 +51,7 @@ const customerNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meine Aufgaben", href: "/tasks", icon: FileText },
   { name: "Chats", href: "/chats", icon: MessageSquare },
+  { name: "Meine Dateien", href: "/files", icon: FolderOpen },
 ];
 
 // Administration section - shown at the bottom
