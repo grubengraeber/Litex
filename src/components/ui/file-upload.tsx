@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Upload, File, X, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
-interface FileWithPreview extends File {
+interface FileWithPreview {
+  file: File;
   preview?: string;
   id: string;
   status: "pending" | "uploading" | "success" | "error";
@@ -53,15 +54,15 @@ export function FileUpload({
           errorMsg = "Nur PDF und Bilder erlaubt";
         }
       }
-      
+
       return {
-        ...file,
+        file: file,
         id: Math.random().toString(36).slice(2),
         status: errorMsg ? "error" : "pending",
         progress: 0,
         errorMessage: errorMsg || undefined,
         preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
-      } as FileWithPreview;
+      };
     });
 
     setFiles((prev) => [...prev, ...processedFiles]);
@@ -133,7 +134,8 @@ export function FileUpload({
         );
       }
 
-      await onUpload(validFiles);
+      // Pass the actual File objects, not FileWithPreview objects
+      await onUpload(validFiles.map(f => f.file));
 
       // Mark as success
       setFiles((prev) =>
@@ -229,7 +231,7 @@ export function FileUpload({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={file.preview}
-                  alt={file.name}
+                  alt={file.file.name}
                   className="w-10 h-10 object-cover rounded"
                 />
               ) : (
@@ -240,9 +242,9 @@ export function FileUpload({
 
               {/* File Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{file.name}</p>
+                <p className="text-sm font-medium truncate">{file.file.name}</p>
                 <p className="text-xs text-slate-500">
-                  {(file.size / 1024).toFixed(0)} KB
+                  {(file.file.size / 1024).toFixed(0)} KB
                   {file.status === "uploading" && ` • ${file.progress}%`}
                   {file.errorMessage && (
                     <span className="text-red-600"> • {file.errorMessage}</span>
