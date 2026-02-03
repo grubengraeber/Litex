@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect } from "react";
+import { Suspense, useState, useMemo, useEffect, useCallback } from "react";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
 import { TasksTable } from "@/components/tasks/tasks-table";
 import { ViewToggle } from "@/components/tasks/view-toggle";
 import { TaskFiltersBar } from "@/components/tasks/task-filters";
+import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
 import { Button } from "@/components/ui/button";
 import { type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
@@ -42,6 +43,7 @@ function TasksContent() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "table">("grid");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -65,30 +67,31 @@ function TasksContent() {
     }
   }, [isEmployee]);
 
+  // Load tasks function
+  const loadTasks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const apiFilters = {
+        status: filters.status,
+        trafficLight: filters.trafficLight,
+        period: filters.period,
+        companyId: filters.companyId,
+        search: filters.search,
+      };
+
+      const fetchedTasks = await fetchTasks(apiFilters);
+      setTasks(fetchedTasks as unknown as Task[]);
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
   // Fetch tasks when filters change
   useEffect(() => {
-    const loadTasks = async () => {
-      setLoading(true);
-      try {
-        const apiFilters = {
-          status: filters.status,
-          trafficLight: filters.trafficLight,
-          period: filters.period,
-          companyId: filters.companyId,
-          search: filters.search,
-        };
-
-        const fetchedTasks = await fetchTasks(apiFilters);
-        setTasks(fetchedTasks as unknown as Task[]);
-      } catch (error) {
-        console.error("Failed to fetch tasks:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadTasks();
-  }, [filters]);
+  }, [loadTasks]);
 
   // Tasks are already filtered by API, just use them directly
   const filteredTasks = tasks;
@@ -155,7 +158,10 @@ function TasksContent() {
           <ViewToggle view={view} onViewChange={handleViewChange} />
 
           {isEmployee && (
-            <Button className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
+              onClick={() => setCreateDialogOpen(true)}
+            >
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Neue Aufgabe</span>
               <span className="inline xs:hidden">Neu</span>
@@ -235,6 +241,16 @@ function TasksContent() {
             Versuchen Sie einen anderen Filter.
           </p>
         </div>
+      )}
+
+      {/* Create Task Dialog */}
+      {isEmployee && (
+        <CreateTaskDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          companies={companies.filter(c => c.id !== "all")}
+          onTaskCreated={loadTasks}
+        />
       )}
     </div>
   );

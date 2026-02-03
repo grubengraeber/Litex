@@ -184,12 +184,14 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      notificationsByUser.get(notif.userId)!.notifications.push({
-        id: notif.id,
-        title: notif.title,
-        message: notif.message,
-        createdAt: notif.createdAt,
-      });
+      if (notif.createdAt) {
+        notificationsByUser.get(notif.userId)!.notifications.push({
+          id: notif.id,
+          title: notif.title,
+          message: notif.message,
+          createdAt: notif.createdAt,
+        });
+      }
     }
 
     const results = {
@@ -200,7 +202,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Send emails to users with unread notifications
-    for (const [, userData] of notificationsByUser) {
+    for (const [, userData] of Array.from(notificationsByUser)) {
       try {
         const userName = userData.name || userData.email.split("@")[0];
         const emailHtml = generateNotificationEmailHtml(userName, userData.notifications);
