@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       filters
     );
 
-    return NextResponse.json(tasks);
+    return NextResponse.json({ tasks });
   } catch (error) {
     console.error("Error fetching tasks:", error);
     return NextResponse.json(

@@ -3,10 +3,14 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
+import { TaskKanban, type KanbanTask } from "@/components/tasks/task-kanban";
+import { TaskTable, type TableTask } from "@/components/tasks/task-table";
+import { ViewToggle, type ViewMode } from "@/components/tasks/view-toggle";
 import { ChatPanel } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
 import { MONTHS, type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Building2, ChevronDown } from "lucide-react";
 import { fetchTasks, fetchCompanies } from "../actions";
 
@@ -40,6 +44,10 @@ function DashboardContent() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, green: 0, yellow: 0, red: 0 });
+  const [viewMode, setViewMode] = useLocalStorage<ViewMode>(
+    "litex-dashboard-view",
+    "list"
+  );
 
   const currentMonth = new Date().getMonth();
   const currentMonthKey = MONTHS[currentMonth].key;
@@ -67,9 +75,7 @@ function DashboardContent() {
           companyId: selectedCompany !== "all" ? selectedCompany : undefined,
         };
 
-        const [fetchedTasks] = await Promise.all([
-          fetchTasks(filters),
-        ]);
+        const fetchedTasks = await fetchTasks(filters);
 
         setTasks(fetchedTasks as unknown as Task[]);
 
@@ -91,30 +97,34 @@ function DashboardContent() {
     loadTasks();
   }, [activeMonthKey, selectedCompany]);
 
-  // Filter and sort tasks
-  const filteredTasks = useMemo(() => {
-    // Only show open and submitted tasks (not completed)
-    const openTasks = tasks.filter((task) => task.status !== "completed");
+  // Transform tasks for different views
+  const transformedTasks = useMemo(() => {
+    // For kanban/table: include all tasks
+    // For list: only open and submitted (sorted by priority)
+    const allTasks = tasks.map((task) => ({
+      id: task.id,
+      title: task.bookingText || "Keine Beschreibung",
+      description: task.bookingText || "",
+      dueDate: "Offen",
+      createdAt: new Date(task.createdAt),
+      status: task.status as TaskStatus,
+      assignee: { name: "Team", initials: "LX" },
+      commentCount: task.comments.length,
+      fileCount: task.files.length,
+      period: task.period || "",
+      companyId: task.company.id,
+      companyName: task.company.name,
+      amount: task.amount || "0,00",
+    }));
 
-    // Sort by priority (red/oldest first)
-    return sortTasksByPriority(
-      openTasks.map((task) => ({
-        id: task.id,
-        title: task.bookingText || "Keine Beschreibung",
-        description: task.bookingText || "",
-        dueDate: "Offen",
-        createdAt: new Date(task.createdAt),
-        status: task.status as TaskStatus,
-        assignee: { name: "Team", initials: "LX" },
-        commentCount: task.comments.length,
-        fileCount: task.files.length,
-        period: task.period || "",
-        companyId: task.company.id,
-        companyName: task.company.name,
-        amount: task.amount || "0,00",
-      }))
-    );
-  }, [tasks]);
+    if (viewMode === "list") {
+      // Only show open and submitted tasks (not completed)
+      const openTasks = allTasks.filter((task) => task.status !== "completed");
+      return sortTasksByPriority(openTasks);
+    }
+
+    return allTasks;
+  }, [tasks, viewMode]);
 
   if (loading) {
     return (
@@ -140,46 +150,51 @@ function DashboardContent() {
             </p>
           </div>
 
-          {/* Company Filter Dropdown (only for employees) */}
-          {isEmployee && (
-            <div className="relative w-full sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
-                className="w-full sm:min-w-48 justify-between"
-              >
-                <div className="flex items-center min-w-0 flex-1">
-                  <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">
-                    {companies.find((c) => c.id === selectedCompany)?.name ||
-                      "Alle Mandanten"}
-                  </span>
-                </div>
-                <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
-              </Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {/* View Toggle */}
+            <ViewToggle value={viewMode} onChange={setViewMode} />
 
-              {showCompanyDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
-                  {companies.map((company) => (
-                    <button
-                      key={company.id}
-                      onClick={() => {
-                        setSelectedCompany(company.id);
-                        setShowCompanyDropdown(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
-                        selectedCompany === company.id
-                          ? "bg-blue-50 text-blue-700"
-                          : ""
-                      }`}
-                    >
-                      {company.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            {/* Company Filter Dropdown (only for employees) */}
+            {isEmployee && (
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+                  className="w-full sm:min-w-48 justify-between"
+                >
+                  <div className="flex items-center min-w-0 flex-1">
+                    <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">
+                      {companies.find((c) => c.id === selectedCompany)?.name ||
+                        "Alle Mandanten"}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
+                </Button>
+
+                {showCompanyDropdown && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
+                    {companies.map((company) => (
+                      <button
+                        key={company.id}
+                        onClick={() => {
+                          setSelectedCompany(company.id);
+                          setShowCompanyDropdown(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
+                          selectedCompany === company.id
+                            ? "bg-blue-50 text-blue-700"
+                            : ""
+                        }`}
+                      >
+                        {company.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats Bar - Ampel Legende */}
@@ -222,26 +237,44 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Task Grid - sorted by priority (red first) */}
-        {filteredTasks.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                id={task.id}
-                title={task.title}
-                description={task.description}
-                dueDate={task.dueDate}
-                createdAt={task.createdAt}
-                status={task.status}
-                assignee={task.assignee}
-                commentCount={task.commentCount}
-                fileCount={task.fileCount}
-                companyName={isEmployee ? task.companyName : undefined}
-                amount={task.amount !== "0,00" ? task.amount : undefined}
+        {/* Task Views */}
+        {transformedTasks.length > 0 ? (
+          <>
+            {viewMode === "list" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {transformedTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    id={task.id}
+                    title={task.title}
+                    description={task.description}
+                    dueDate={task.dueDate}
+                    createdAt={task.createdAt}
+                    status={task.status}
+                    assignee={task.assignee}
+                    commentCount={task.commentCount}
+                    fileCount={task.fileCount}
+                    companyName={isEmployee ? task.companyName : undefined}
+                    amount={task.amount !== "0,00" ? task.amount : undefined}
+                  />
+                ))}
+              </div>
+            )}
+
+            {viewMode === "kanban" && (
+              <TaskKanban
+                tasks={transformedTasks as KanbanTask[]}
+                showCompanyName={isEmployee}
               />
-            ))}
-          </div>
+            )}
+
+            {viewMode === "table" && (
+              <TaskTable
+                tasks={transformedTasks as TableTask[]}
+                showCompanyName={isEmployee}
+              />
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
