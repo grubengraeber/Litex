@@ -19,6 +19,12 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 interface Company {
@@ -81,6 +87,33 @@ function CompaniesContent() {
       company.finmaticsId?.toLowerCase().includes(query)
     );
   });
+
+  const handleEdit = (company: Company) => {
+    toast.info(`Bearbeiten von ${company.name} - Feature kommt bald`);
+    // TODO: Open edit dialog
+  };
+
+  const handleToggleStatus = async (company: Company) => {
+    try {
+      const response = await fetch(`/api/companies?id=${company.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !company.isActive }),
+      });
+
+      if (response.ok) {
+        toast.success(
+          `${company.name} wurde ${!company.isActive ? "aktiviert" : "deaktiviert"}`
+        );
+        fetchCompanies();
+      } else {
+        toast.error("Fehler beim Aktualisieren des Status");
+      }
+    } catch (error) {
+      console.error("Error toggling status:", error);
+      toast.error("Fehler beim Aktualisieren des Status");
+    }
+  };
 
   // Redirect customers - they shouldn't see this page
   if (!isEmployee) {
@@ -160,9 +193,21 @@ function CompaniesContent() {
                         </span>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="shrink-0">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(company)}>
+                          Bearbeiten
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleStatus(company)}>
+                          {company.isActive ? "Deaktivieren" : "Aktivieren"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
@@ -201,7 +246,11 @@ function CompaniesContent() {
             ))}
           </div>
         ) : (
-          <CompaniesDataTable companies={filteredCompanies} />
+          <CompaniesDataTable
+            companies={filteredCompanies}
+            onEdit={handleEdit}
+            onToggleStatus={handleToggleStatus}
+          />
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
