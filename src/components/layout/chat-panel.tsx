@@ -51,6 +51,8 @@ interface ChatPanelProps {
   defaultCollapsed?: boolean;
   /** Hide the header (for fullscreen mode where parent provides header) */
   hideHeader?: boolean;
+  /** Callback when file attachment is clicked */
+  onFileClick?: (fileId: string, fileName: string) => void;
 }
 
 function formatTimestamp(date: Date): string {
@@ -167,6 +169,7 @@ export function ChatPanel({
   collapsible = false,
   defaultCollapsed = false,
   hideHeader = false,
+  onFileClick,
 }: ChatPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [message, setMessage] = useState("");
@@ -346,15 +349,18 @@ export function ChatPanel({
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="flex flex-col gap-1 mt-1">
                       {msg.attachments.map((att) => (
-                        <div 
+                        <button
                           key={att.id}
+                          onClick={() => onFileClick?.(att.id, att.name)}
                           className={cn(
-                            "flex items-center gap-2 px-2 py-1.5 rounded border text-xs",
-                            att.status ? FILE_STATUS_STYLES[att.status] : "bg-slate-50 border-slate-200"
+                            "flex items-center gap-2 px-2 py-1.5 rounded border text-xs transition-colors",
+                            att.status ? FILE_STATUS_STYLES[att.status] : "bg-slate-50 border-slate-200 hover:bg-slate-100",
+                            onFileClick && "cursor-pointer"
                           )}
+                          title="Herunterladen"
                         >
                           <File className="w-3.5 h-3.5 shrink-0" />
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 text-left">
                             <div className="truncate font-medium">{att.name}</div>
                             <div className="flex items-center gap-2 text-[10px] opacity-75">
                               <span>{att.size}</span>
@@ -366,7 +372,7 @@ export function ChatPanel({
                               )}
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}

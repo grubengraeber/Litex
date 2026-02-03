@@ -9,6 +9,7 @@ import { ChatPanel, type ChatMessage } from "@/components/layout/chat-panel";
 import { ArrowLeft, ExternalLink, Building2, Calendar } from "lucide-react";
 import { TRAFFIC_LIGHT_CONFIG, TASK_STATUS } from "@/lib/constants";
 import { toast } from "sonner";
+import { validateFile, compressImage, formatFileSize } from "@/lib/file-utils";
 
 interface Task {
   id: string;
@@ -33,6 +34,7 @@ interface Comment {
     name: string | null;
     email: string;
   };
+  files?: TaskFile[];
 }
 
 interface TaskFile {
@@ -72,63 +74,8 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
         const userId = session?.user?.id || "";
         setCurrentUserId(userId);
 
-        // Fetch comments
-        const commentsResponse = await fetch(`/api/tasks/${taskId}/comments`);
-        if (!commentsResponse.ok) throw new Error("Failed to fetch comments");
-        const { comments: commentsData } = await commentsResponse.json();
-
-        // Fetch files
-        const filesResponse = await fetch(`/api/tasks/${taskId}/files`);
-        let taskFiles: TaskFile[] = [];
-        if (filesResponse.ok) {
-          const { files } = await filesResponse.json() as { files: TaskFile[] };
-          taskFiles = files.map((file) => ({
-            ...file,
-            createdAt: new Date(file.createdAt),
-          }));
-        }
-
-        // Transform to ChatMessage format and attach files
-        const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
-          const initials = comment.user.name
-            ? comment.user.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)
-            : comment.user.email.slice(0, 2).toUpperCase();
-
-          const commentTime = new Date(comment.createdAt).getTime();
-
-          // Find files created within 1 minute of this comment
-          const relatedFiles = taskFiles.filter(file => {
-            const fileTime = new Date(file.createdAt).getTime();
-            const timeDiff = Math.abs(fileTime - commentTime);
-            return timeDiff < 60000; // Within 1 minute
-          });
-
-          const attachments = relatedFiles.map(file => ({
-            id: file.id,
-            name: file.fileName,
-            type: file.mimeType || 'application/octet-stream',
-            size: file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Unknown',
-          }));
-
-          return {
-            id: comment.id,
-            content: comment.content,
-            sender: {
-              name: comment.user.name || comment.user.email,
-              initials,
-              isCurrentUser: comment.user.id === userId,
-            },
-            timestamp: new Date(comment.createdAt),
-            attachments: attachments.length > 0 ? attachments : undefined,
-          };
-        });
-
-        setComments(chatMessages);
+        // Load comments
+        await loadComments();
       } catch (error) {
         console.error("Failed to load chat:", error);
         toast.error("Chat konnte nicht geladen werden");
@@ -138,83 +85,62 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
     };
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
-  // Poll for new comments and files
+  // Poll for new comments
   useEffect(() => {
     if (!currentUserId) return;
 
-    const intervalId = setInterval(async () => {
-      try {
-        // Fetch comments
-        const response = await fetch(`/api/tasks/${taskId}/comments`);
-        if (!response.ok) return;
-        const { comments: commentsData } = await response.json();
-
-        // Fetch files
-        const filesResponse = await fetch(`/api/tasks/${taskId}/files`);
-        let taskFiles: TaskFile[] = [];
-        if (filesResponse.ok) {
-          const { files } = await filesResponse.json() as { files: TaskFile[] };
-          taskFiles = files.map((file) => ({
-            ...file,
-            createdAt: new Date(file.createdAt),
-          }));
-        }
-
-        const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
-          const initials = comment.user.name
-            ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-            : comment.user.email.slice(0, 2).toUpperCase();
-
-          const commentTime = new Date(comment.createdAt).getTime();
-
-          // Find files created within 1 minute of this comment
-          const relatedFiles = taskFiles.filter(file => {
-            const fileTime = new Date(file.createdAt).getTime();
-            const timeDiff = Math.abs(fileTime - commentTime);
-            return timeDiff < 60000; // Within 1 minute
-          });
-
-          const attachments = relatedFiles.map(file => ({
-            id: file.id,
-            name: file.fileName,
-            type: file.mimeType || 'application/octet-stream',
-            size: file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Unknown',
-          }));
-
-          return {
-            id: comment.id,
-            content: comment.content,
-            sender: {
-              name: comment.user.name || comment.user.email,
-              initials,
-              isCurrentUser: comment.user.id === currentUserId,
-            },
-            timestamp: new Date(comment.createdAt),
-            attachments: attachments.length > 0 ? attachments : undefined,
-          };
-        });
-
-        setComments(chatMessages);
-      } catch (error) {
-        console.error("Failed to refresh comments:", error);
-      }
+    const intervalId = setInterval(() => {
+      loadComments().catch(console.error);
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, currentUserId]);
 
   const handleSendMessage = async (content: string, attachments?: File[]) => {
     if (!content.trim() && !attachments?.length) return;
 
     try {
-      const uploadedFiles: { name: string; size: number; type: string }[] = [];
+      const fileIds: string[] = [];
 
       // Upload files first if any
       if (attachments && attachments.length > 0) {
-        for (const file of attachments) {
-          // Step 1: Request presigned upload URL
+        toast.info("Dateien werden hochgeladen...");
+
+        for (const originalFile of attachments) {
+          // Step 1: Validate file
+          const validation = validateFile(originalFile);
+          if (!validation.valid) {
+            toast.error(validation.error || "Datei ungültig");
+            continue;
+          }
+
+          if (validation.warning) {
+            toast.info(validation.warning);
+          }
+
+          // Step 2: Compress if image
+          let file = originalFile;
+          if (originalFile.type.startsWith("image/")) {
+            try {
+              const compressed = await compressImage(originalFile);
+              const savedSize = originalFile.size - compressed.size;
+              if (savedSize > 0) {
+                toast.success(
+                  `${originalFile.name} komprimiert: ${formatFileSize(savedSize)} gespart`
+                );
+              }
+              file = compressed;
+            } catch (err) {
+              console.warn("Compression failed, using original:", err);
+              file = originalFile;
+            }
+          }
+
+          // Step 3: Request presigned upload URL
           const requestResponse = await fetch(`/api/tasks/${taskId}/files?action=requestUpload`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -226,12 +152,13 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
           });
 
           if (!requestResponse.ok) {
-            throw new Error("Failed to request upload URL");
+            toast.error(`Upload fehlgeschlagen: ${file.name}`);
+            continue;
           }
 
           const { uploadUrl, storageKey, bucket } = await requestResponse.json();
 
-          // Step 2: Upload file directly to S3/MinIO
+          // Step 4: Upload file directly to S3/MinIO
           const uploadResponse = await fetch(uploadUrl, {
             method: "PUT",
             body: file,
@@ -241,10 +168,11 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
           });
 
           if (!uploadResponse.ok) {
-            throw new Error("Failed to upload file to storage");
+            toast.error(`Speichern fehlgeschlagen: ${file.name}`);
+            continue;
           }
 
-          // Step 3: Confirm upload to create database record
+          // Step 5: Confirm upload to create database record
           const confirmResponse = await fetch(`/api/tasks/${taskId}/files?action=confirmUpload`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -258,94 +186,100 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
           });
 
           if (!confirmResponse.ok) {
-            throw new Error("Failed to confirm upload");
+            toast.error(`Fehler beim Speichern: ${file.name}`);
+            continue;
           }
 
-          uploadedFiles.push({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-          });
+          const { file: uploadedFile } = await confirmResponse.json();
+          fileIds.push(uploadedFile.id);
         }
 
-        toast.success(`${attachments.length} ${attachments.length === 1 ? 'Datei' : 'Dateien'} hochgeladen`);
+        if (fileIds.length > 0) {
+          toast.success(
+            `${fileIds.length} ${fileIds.length === 1 ? "Datei" : "Dateien"} hochgeladen`
+          );
+        }
       }
 
-      // Create comment with file information
-      let commentText = content.trim();
+      // Create comment with attached files
+      const commentText = content.trim() || "[Datei hochgeladen]";
 
-      // If files were uploaded, add them to the comment
-      if (uploadedFiles.length > 0 && !commentText) {
-        commentText = uploadedFiles.map(f => `📎 ${f.name}`).join('\n');
-      } else if (uploadedFiles.length > 0) {
-        commentText += '\n\n' + uploadedFiles.map(f => `📎 ${f.name}`).join('\n');
-      }
-
-      // Send comment
-      if (commentText) {
-        const response = await fetch(`/api/tasks/${taskId}/comments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: commentText }),
-        });
-
-        if (!response.ok) throw new Error("Failed to send message");
-      }
-
-      // Refresh comments and files
-      const commentsResponse = await fetch(`/api/tasks/${taskId}/comments`);
-      const { comments: commentsData } = await commentsResponse.json();
-
-      // Fetch files
-      const filesResponse = await fetch(`/api/tasks/${taskId}/files`);
-      let taskFiles: TaskFile[] = [];
-      if (filesResponse.ok) {
-        const { files } = await filesResponse.json() as { files: TaskFile[] };
-        taskFiles = files.map((file) => ({
-          ...file,
-          createdAt: new Date(file.createdAt),
-        }));
-      }
-
-      const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
-        const initials = comment.user.name
-          ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-          : comment.user.email.slice(0, 2).toUpperCase();
-
-        const commentTime = new Date(comment.createdAt).getTime();
-
-        // Find files created within 1 minute of this comment
-        const relatedFiles = taskFiles.filter(file => {
-          const fileTime = new Date(file.createdAt).getTime();
-          const timeDiff = Math.abs(fileTime - commentTime);
-          return timeDiff < 60000; // Within 1 minute
-        });
-
-        const attachments = relatedFiles.map(file => ({
-          id: file.id,
-          name: file.fileName,
-          type: file.mimeType || 'application/octet-stream',
-          size: file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Unknown',
-        }));
-
-        return {
-          id: comment.id,
-          content: comment.content,
-          sender: {
-            name: comment.user.name || comment.user.email,
-            initials,
-            isCurrentUser: comment.user.id === currentUserId,
-          },
-          timestamp: new Date(comment.createdAt),
-          attachments: attachments.length > 0 ? attachments : undefined,
-        };
+      const response = await fetch(`/api/tasks/${taskId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: commentText,
+          fileIds: fileIds.length > 0 ? fileIds : undefined,
+        }),
       });
 
-      setComments(chatMessages);
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      toast.success("Nachricht gesendet");
+
+      // Refresh comments
+      await loadComments();
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Nachricht konnte nicht gesendet werden");
     }
+  };
+
+  // Handle file download
+  const handleFileDownload = async (fileId: string, fileName: string) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/files?fileId=${fileId}`);
+      if (!response.ok) {
+        throw new Error("Failed to get download URL");
+      }
+
+      const { downloadUrl } = await response.json();
+
+      // Open download URL in new tab
+      window.open(downloadUrl, "_blank");
+      toast.success(`${fileName} wird heruntergeladen`);
+    } catch (error) {
+      console.error("Failed to download file:", error);
+      toast.error("Datei konnte nicht heruntergeladen werden");
+    }
+  };
+
+  // Extract loading logic into separate function
+  const loadComments = async () => {
+    const commentsResponse = await fetch(`/api/tasks/${taskId}/comments`);
+    if (!commentsResponse.ok) return;
+
+    const { comments: commentsData } = await commentsResponse.json();
+
+    const chatMessages: ChatMessage[] = commentsData.map((comment: Comment & { files?: TaskFile[] }) => {
+      const initials = comment.user.name
+        ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+        : comment.user.email.slice(0, 2).toUpperCase();
+
+      // Use files attached to comment (from migration)
+      const attachments = comment.files?.map((file: TaskFile) => ({
+        id: file.id,
+        name: file.fileName,
+        type: file.mimeType || "application/octet-stream",
+        size: formatFileSize(file.fileSize),
+      })) || [];
+
+      return {
+        id: comment.id,
+        content: comment.content,
+        sender: {
+          name: comment.user.name || comment.user.email,
+          initials,
+          isCurrentUser: comment.user.id === currentUserId,
+        },
+        timestamp: new Date(comment.createdAt),
+        attachments: attachments.length > 0 ? attachments : undefined,
+      };
+    });
+
+    setComments(chatMessages);
   };
 
   if (loading) {
@@ -430,6 +364,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
             taskId={taskId}
             messages={comments}
             onSendMessage={handleSendMessage}
+            onFileClick={handleFileDownload}
             hideHeader
           />
         </Card>
