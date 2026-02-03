@@ -3,7 +3,7 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
-import { Input } from "@/components/ui/input";
+import { GlobalSearch } from "@/components/layout/global-search";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronDown, ChevronLeft, ChevronRight, Calendar, LogOut, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, LogOut, ExternalLink } from "lucide-react";
 import Cookies from "js-cookie";
 
 interface HeaderProps {
@@ -136,15 +136,8 @@ export function Header({ onMonthChange }: HeaderProps) {
 
       {/* Right Section */}
       <div className="flex items-center gap-2 ml-auto shrink-0">
-        {/* Search - hidden on mobile */}
-        <div className="relative hidden sm:block">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Suchen..."
-            className="pl-8 w-40 h-8"
-          />
-        </div>
+        {/* Global Search */}
+        <GlobalSearch />
 
         {/* User Avatar Dropdown */}
         <DropdownMenu>
