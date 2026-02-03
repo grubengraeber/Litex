@@ -4,9 +4,10 @@ import { db } from "@/db";
 import { files, users, tasks, companies } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // GET /api/files - List all files (with access control)
-export async function GET() {
+export const GET = withAuditLog(async () => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -105,4 +106,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "file", skip: () => true });

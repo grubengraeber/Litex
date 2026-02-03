@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { getTasksForUser, createTask } from "@/db/queries";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 const createTaskSchema = z.object({
   companyId: z.string().uuid(),
@@ -17,7 +17,7 @@ const createTaskSchema = z.object({
 });
 
 // GET /api/tasks - List tasks (filtered by user role)
-export async function GET(request: NextRequest) {
+export const GET = withAuditLog(async (request: NextRequest) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -67,10 +67,10 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "task", skip: () => true });
 
 // POST /api/tasks - Create task
-export async function POST(request: NextRequest) {
+export const POST = withAuditLog(async (request: NextRequest) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -96,16 +96,6 @@ export async function POST(request: NextRequest) {
 
     const task = await createTask(data);
 
-    // Audit log
-    await auditLog(request, "CREATE", "task", {
-      entityId: task.id,
-      metadata: {
-        companyId: task.companyId,
-        bookingText: task.bookingText,
-        period: task.period,
-      },
-    });
-
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -121,4 +111,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "task" });

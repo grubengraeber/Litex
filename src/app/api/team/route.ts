@@ -4,12 +4,13 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { db } from "@/db";
 import { users, roles, userRoles, companies } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 /**
  * GET /api/team
  * Get all law firm employees (team members)
  */
-export const GET = withPermission(
+export const GET = withAuditLog(withPermission(
   PERMISSIONS.VIEW_TEAM,
   async () => {
     try {
@@ -72,4 +73,4 @@ export const GET = withPermission(
       );
     }
   }
-);
+), { auto: true, entityType: "team", skip: () => true });

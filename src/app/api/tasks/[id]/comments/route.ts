@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getTaskById, getCommentsForTask, createComment, deleteComment } from "@/db/queries";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 import { z } from "zod";
 
 const createCommentSchema = z.object({
@@ -55,10 +56,10 @@ export async function GET(
 }
 
 // POST /api/tasks/[id]/comments - Add comment
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -134,10 +135,16 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, {
+  auto: true,
+  entityType: "comment",
+  getMetadata: (req) => ({
+    taskId: req.nextUrl.pathname.split('/')[3], // Extract task ID from path
+  }),
+});
 
 // DELETE /api/tasks/[id]/comments - Delete comment
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuditLog(async (request: NextRequest) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -174,4 +181,8 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, {
+  auto: true,
+  entityType: "comment",
+  getEntityId: (req) => req.nextUrl.searchParams.get("commentId") || undefined,
+});

@@ -3,9 +3,10 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // GET /api/notifications - Get user's notifications
-export async function GET(request: NextRequest) {
+export const GET = withAuditLog(async (request: NextRequest) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -59,4 +60,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "notification", skip: () => true });

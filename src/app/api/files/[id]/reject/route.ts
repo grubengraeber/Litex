@@ -5,17 +5,17 @@ import { files } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 const rejectSchema = z.object({
   reason: z.string().min(1).max(500),
 });
 
 // POST /api/files/[id]/reject - Reject a file
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -60,16 +60,6 @@ export async function POST(
       );
     }
 
-    // Audit log
-    await auditLog(request, "REJECT", "file", {
-      entityId: id,
-      metadata: {
-        fileName: updated.fileName,
-        taskId: updated.taskId,
-        reason,
-      },
-    });
-
     return NextResponse.json({ file: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -85,4 +75,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, {
+  action: "REJECT",
+  entityType: "file",
+});

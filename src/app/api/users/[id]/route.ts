@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { getUserById, updateUser } from "@/db/queries";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 const updateUserSchema = z.object({
   name: z.string().optional(),
@@ -13,10 +13,10 @@ const updateUserSchema = z.object({
 });
 
 // GET /api/users/[id] - Get user by ID
-export async function GET(
+export const GET = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -57,13 +57,13 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "user", skip: () => true });
 
 // PATCH /api/users/[id] - Update user
-export async function PATCH(
+export const PATCH = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -91,18 +91,6 @@ export async function PATCH(
       // Only allow updating name for own profile
       const user = await updateUser(id, { name: data.name });
 
-      // Audit log
-      await auditLog(request, "UPDATE", "user", {
-        entityId: id,
-        changes: {
-          before: { name: userBefore.name },
-          after: { name: user.name },
-        },
-        metadata: {
-          selfUpdate: true,
-        },
-      });
-
       return NextResponse.json({ user });
     }
 
@@ -128,28 +116,6 @@ export async function PATCH(
       );
     }
 
-    // Audit log
-    await auditLog(request, "UPDATE", "user", {
-      entityId: id,
-      changes: {
-        before: {
-          name: userBefore.name,
-          role: userBefore.role,
-          status: userBefore.status,
-          companyId: userBefore.companyId,
-        },
-        after: {
-          name: user.name,
-          role: user.role,
-          status: user.status,
-          companyId: user.companyId,
-        },
-      },
-      metadata: {
-        updatedBy: session.user.id,
-      },
-    });
-
     return NextResponse.json({ user });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -165,13 +131,13 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "user" });
 
 // DELETE /api/users/[id] - Delete user
-export async function DELETE(
+export const DELETE = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -219,17 +185,6 @@ export async function DELETE(
 
     await db.delete(users).where(eq(users.id, id));
 
-    // Audit log
-    await auditLog(request, "DELETE", "user", {
-      entityId: id,
-      metadata: {
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        deletedBy: session.user.id,
-      },
-    });
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting user:", error);
@@ -238,4 +193,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "user" });

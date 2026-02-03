@@ -3,19 +3,20 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // POST /api/notifications/[id]/read - Mark notification as read
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const notificationId = params.id;
+    const { id: notificationId } = await params;
 
     if (!db) {
       return NextResponse.json({ error: "Database not configured" }, { status: 500 });
@@ -40,4 +41,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "notification", skip: () => true });

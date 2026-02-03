@@ -3,9 +3,10 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // POST /api/notifications/read-all - Mark all notifications as read
-export async function POST() {
+export const POST = withAuditLog(async () => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -30,4 +31,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "notification", skip: () => true });

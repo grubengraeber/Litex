@@ -4,12 +4,13 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { db } from "@/db";
 import { roles, rolePermissions, permissions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 /**
  * GET /api/roles
  * Get all roles with their permissions
  */
-export const GET = withPermission(
+export const GET = withAuditLog(withPermission(
   PERMISSIONS.VIEW_ROLES,
   async () => {
     try {
@@ -70,13 +71,13 @@ export const GET = withPermission(
       );
     }
   }
-);
+), { auto: true, entityType: "role", skip: () => true });
 
 /**
  * POST /api/roles
  * Create a new role
  */
-export const POST = withPermission(
+export const POST = withAuditLog(withPermission(
   PERMISSIONS.CREATE_ROLES,
   async (req: NextRequest) => {
     try {
@@ -119,4 +120,4 @@ export const POST = withPermission(
       );
     }
   }
-);
+), { auto: true, entityType: "role" });

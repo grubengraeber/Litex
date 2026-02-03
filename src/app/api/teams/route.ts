@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { teams, teamMembers, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 const createTeamSchema = z.object({
   name: z.string().min(1).max(255),
@@ -16,7 +17,7 @@ const createTeamSchema = z.object({
  * GET /api/teams
  * Get all teams with their members
  */
-export const GET = withPermission(
+export const GET = withAuditLog(withPermission(
   PERMISSIONS.VIEW_TEAM,
   async () => {
     try {
@@ -80,13 +81,13 @@ export const GET = withPermission(
       );
     }
   }
-);
+), { auto: true, entityType: "team", skip: () => true });
 
 /**
  * POST /api/teams
  * Create a new team
  */
-export const POST = withPermission(
+export const POST = withAuditLog(withPermission(
   PERMISSIONS.MANAGE_USER_ROLES,
   async (req: NextRequest) => {
     try {
@@ -118,4 +119,4 @@ export const POST = withPermission(
       );
     }
   }
-);
+), { auto: true, entityType: "team" });

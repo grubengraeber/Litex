@@ -3,12 +3,13 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { comments, notifications, users, tasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // GET /api/tasks/[id]/messages - Load comments for a task
-export async function GET(
+export const GET = withAuditLog(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -19,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
-    const taskId = params.id;
+    const { id: taskId } = await params;
 
     // Get comments with sender info
     const taskComments = await db
@@ -89,13 +90,13 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "message", skip: () => true });
 
 // POST /api/tasks/[id]/messages - Send a new comment
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -106,7 +107,7 @@ export async function POST(
       return NextResponse.json({ error: "Database not configured" }, { status: 500 });
     }
 
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const { content } = await request.json();
 
     if (!content?.trim()) {
@@ -192,7 +193,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "message" });
 
 function getInitials(name: string): string {
   return name

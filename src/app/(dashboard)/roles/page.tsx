@@ -234,6 +234,7 @@ export default function RolesPage() {
     files: "Dateien",
     comments: "Kommentare",
     roles: "Rollen",
+    audit: "Audit Logs",
   };
 
   return (

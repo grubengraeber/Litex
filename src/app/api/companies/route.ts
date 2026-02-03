@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getAllCompanies, getCompanyById, createCompany, updateCompany } from "@/db/queries";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
+import { withAuditLog, withDetailedAuditLog } from "@/lib/audit/withAuditLog";
 
 const createCompanySchema = z.object({
   name: z.string().min(1).max(255),
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/companies - Create company (employees only)
-export async function POST(request: NextRequest) {
+export const POST = withAuditLog(async (request: NextRequest) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -108,10 +109,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "company" });
 
 // PATCH /api/companies - Update company (employees only)
-export async function PATCH(request: NextRequest) {
+export const PATCH = withDetailedAuditLog(async (request: NextRequest) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -163,4 +164,22 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, {
+  auto: true,
+  entityType: "company",
+  getEntityId: (req) => req.nextUrl.searchParams.get("id") || undefined,
+  getBeforeState: async (req) => {
+    const companyId = req.nextUrl.searchParams.get("id");
+    if (!companyId) return null;
+    return await getCompanyById(companyId);
+  },
+  getAfterState: async (response) => {
+    try {
+      const clonedResponse = response.clone();
+      const data = await clonedResponse.json();
+      return data.company;
+    } catch {
+      return null;
+    }
+  },
+});

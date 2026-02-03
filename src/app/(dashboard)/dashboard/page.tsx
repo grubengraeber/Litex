@@ -3,12 +3,13 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
-import { ChatPanel } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MONTHS, type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
-import { Building2, ChevronDown } from "lucide-react";
+import { Building2, ChevronDown, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
 import { fetchTasks, fetchCompanies } from "../actions";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Task {
   id: string;
@@ -120,6 +121,23 @@ function DashboardContent() {
     );
   }, [tasks]);
 
+  // Chart data for task age distribution
+  const chartData = useMemo(() => {
+    const red = tasks.filter(t => t.status !== "completed" && t.trafficLight === "red").length;
+    const yellow = tasks.filter(t => t.status !== "completed" && t.trafficLight === "yellow").length;
+    const green = tasks.filter(t => t.status !== "completed" && t.trafficLight === "green").length;
+
+    return [
+      { name: ">60 Tage", value: red, color: "#ef4444" },
+      { name: "30-60 Tage", value: yellow, color: "#eab308" },
+      { name: "<30 Tage", value: green, color: "#22c55e" },
+    ];
+  }, [tasks]);
+
+  const completedThisMonth = useMemo(() => {
+    return tasks.filter(t => t.status === "completed").length;
+  }, [tasks]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -129,9 +147,9 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6">
+    <div className="flex flex-col h-full gap-6">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 order-2 lg:order-1">
+      <div className="flex-1 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div className="min-w-0 flex-1">
             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 break-words">
@@ -184,6 +202,84 @@ function DashboardContent() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Task Age Distribution Chart */}
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+                Aufgaben nach Alter
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis
+                    dataKey="name"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Summary Stats */}
+          <div className="flex flex-col gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Offene Aufgaben</p>
+                      <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Erledigt</p>
+                      <p className="text-2xl font-bold text-slate-900">{completedThisMonth}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Urgent Stats Bar - Only Red and Yellow */}
@@ -263,11 +359,6 @@ function DashboardContent() {
             )}
           </div>
         )}
-      </div>
-
-      {/* Chat Panel - Hidden on mobile, shown on lg+ */}
-      <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
-        <ChatPanel title="TEAM CHAT" collapsible defaultCollapsed={false} />
       </div>
     </div>
   );

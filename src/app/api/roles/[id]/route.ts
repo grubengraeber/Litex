@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { db } from "@/db";
 import { roles, rolePermissions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 interface RouteParams {
   id: string;
@@ -13,7 +14,7 @@ interface RouteParams {
  * GET /api/roles/[id]
  * Get a specific role with its permissions
  */
-export const GET = withPermission<RouteParams>(
+export const GET = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.VIEW_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -40,13 +41,13 @@ export const GET = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "role", skip: () => true });
 
 /**
  * PUT /api/roles/[id]
  * Update a role and its permissions
  */
-export const PUT = withPermission<RouteParams>(
+export const PUT = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.EDIT_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -114,13 +115,13 @@ export const PUT = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "role" });
 
 /**
  * DELETE /api/roles/[id]
  * Delete a role
  */
-export const DELETE = withPermission<RouteParams>(
+export const DELETE = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.DELETE_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -161,4 +162,4 @@ export const DELETE = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "role" });

@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { userRoles, roles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 interface RouteParams {
   id: string;
@@ -15,7 +15,7 @@ interface RouteParams {
  * GET /api/users/[id]/roles
  * Get all roles assigned to a user
  */
-export const GET = withPermission<RouteParams>(
+export const GET = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.VIEW_ALL_USERS,
   async (req: NextRequest, { params }) => {
     try {
@@ -42,13 +42,13 @@ export const GET = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "user-role", skip: () => true });
 
 /**
  * POST /api/users/[id]/roles
  * Assign a role to a user
  */
-export const POST = withPermission<RouteParams>(
+export const POST = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.MANAGE_USER_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -108,17 +108,6 @@ export const POST = withPermission<RouteParams>(
         })
         .returning();
 
-      // Audit log
-      await auditLog(req, "CREATE", "role", {
-        entityId: roleId,
-        metadata: {
-          action: "ASSIGN_ROLE",
-          userId,
-          roleName: role.name,
-          assignedBy: currentUserId,
-        },
-      });
-
       return NextResponse.json(newUserRole, { status: 201 });
     } catch (error) {
       console.error("Error assigning role to user:", error);
@@ -128,13 +117,13 @@ export const POST = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "user-role" });
 
 /**
  * DELETE /api/users/[id]/roles
  * Remove a role from a user
  */
-export const DELETE = withPermission<RouteParams>(
+export const DELETE = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.MANAGE_USER_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -148,12 +137,6 @@ export const DELETE = withPermission<RouteParams>(
           { status: 400 }
         );
       }
-
-      // Get role info before deletion for audit log
-      const [role] = await db
-        .select()
-        .from(roles)
-        .where(eq(roles.id, roleId));
 
       // Remove role assignment
       const result = await db
@@ -173,18 +156,6 @@ export const DELETE = withPermission<RouteParams>(
         );
       }
 
-      // Audit log
-      const session = await auth();
-      await auditLog(req, "DELETE", "role", {
-        entityId: roleId,
-        metadata: {
-          action: "REMOVE_ROLE",
-          userId,
-          roleName: role?.name,
-          removedBy: session?.user?.id,
-        },
-      });
-
       return NextResponse.json(
         { message: "Role removed successfully" },
         { status: 200 }
@@ -197,4 +168,4 @@ export const DELETE = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "user-role" });

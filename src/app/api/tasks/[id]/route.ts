@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { getTaskById, updateTask, deleteTask } from "@/db/queries";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 const updateTaskSchema = z.object({
   status: z.enum(["open", "submitted", "completed"]).optional(),
@@ -11,10 +11,10 @@ const updateTaskSchema = z.object({
 });
 
 // GET /api/tasks/[id] - Get single task
-export async function GET(
+export const GET = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -67,13 +67,13 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "task", skip: () => true });
 
 // PATCH /api/tasks/[id] - Update task
-export async function PATCH(
+export const PATCH = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -158,26 +158,6 @@ export async function PATCH(
 
     const updated = await updateTask(id, updateData);
 
-    // Audit log
-    await auditLog(request, "UPDATE", "task", {
-      entityId: id,
-      changes: {
-        before: {
-          status: task.status,
-          trafficLight: task.trafficLight,
-        },
-        after: {
-          status: updated.status,
-          trafficLight: updated.trafficLight,
-        },
-      },
-      metadata: {
-        companyId: task.companyId,
-        statusChanged: task.status !== updated.status,
-        trafficLightChanged: task.trafficLight !== updated.trafficLight,
-      },
-    });
-
     return NextResponse.json({ task: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -193,13 +173,13 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "task" });
 
 // DELETE /api/tasks/[id] - Delete task
-export async function DELETE(
+export const DELETE = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -233,16 +213,6 @@ export async function DELETE(
 
     await deleteTask(id);
 
-    // Audit log
-    await auditLog(request, "DELETE", "task", {
-      entityId: id,
-      metadata: {
-        companyId: task.companyId,
-        bookingText: task.bookingText,
-        status: task.status,
-      },
-    });
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting task:", error);
@@ -251,4 +221,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "task" });

@@ -4,13 +4,13 @@ import { db } from "@/db";
 import { files } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // POST /api/files/[id]/approve - Approve a file
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -51,15 +51,6 @@ export async function POST(
       );
     }
 
-    // Audit log
-    await auditLog(request, "APPROVE", "file", {
-      entityId: id,
-      metadata: {
-        fileName: updated.fileName,
-        taskId: updated.taskId,
-      },
-    });
-
     return NextResponse.json({ file: updated });
   } catch (error) {
     console.error("Error approving file:", error);
@@ -68,4 +59,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, {
+  action: "APPROVE",
+  entityType: "file",
+});

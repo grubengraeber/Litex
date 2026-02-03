@@ -3,19 +3,20 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { commentReads, comments } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 // POST /api/messages/[id]/read - Mark comment as read
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const commentId = params.id;
+    const { id: commentId } = await params;
 
     if (!db) {
       return NextResponse.json({ error: "Database not configured" }, { status: 500 });
@@ -61,4 +62,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "message", skip: () => true });

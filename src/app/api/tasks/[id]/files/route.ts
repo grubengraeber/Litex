@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { getTaskById, getFilesForTask, createFile, deleteFile as deleteFileRecord } from "@/db/queries";
 import { getUploadUrl, getDownloadUrl, deleteFile as deleteS3File } from "@/lib/s3";
 import { z } from "zod";
-import { auditLog } from "@/lib/audit/audit-middleware";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 const requestUploadSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -20,10 +20,10 @@ const confirmUploadSchema = z.object({
 });
 
 // GET /api/tasks/[id]/files - List files and optionally get download URL
-export async function GET(
+export const GET = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -69,16 +69,6 @@ export async function GET(
 
       const { downloadUrl } = await getDownloadUrl(file.storageKey, file.fileName);
 
-      // Audit log
-      await auditLog(request, "DOWNLOAD", "file", {
-        entityId: fileId,
-        metadata: {
-          fileName: file.fileName,
-          taskId: id,
-          storageKey: file.storageKey,
-        },
-      });
-
       return NextResponse.json({
         file,
         downloadUrl,
@@ -96,13 +86,13 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "file", skip: () => true });
 
 // POST /api/tasks/[id]/files - Request upload URL or confirm upload
-export async function POST(
+export const POST = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -165,18 +155,6 @@ export async function POST(
         storageKey: data.storageKey,
       });
 
-      // Audit log
-      await auditLog(request, "UPLOAD", "file", {
-        entityId: file.id,
-        metadata: {
-          taskId: id,
-          fileName: data.fileName,
-          mimeType: data.mimeType,
-          fileSize: data.fileSize,
-          storageKey: data.storageKey,
-        },
-      });
-
       return NextResponse.json({ file }, { status: 201 });
     }
 
@@ -198,13 +176,13 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "file" });
 
 // DELETE /api/tasks/[id]/files - Delete file
-export async function DELETE(
+export const DELETE = withAuditLog(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -253,16 +231,6 @@ export async function DELETE(
       }
     }
 
-    // Audit log
-    await auditLog(request, "DELETE", "file", {
-      entityId: fileId,
-      metadata: {
-        taskId: id,
-        fileName: file?.fileName,
-        storageKey: file?.storageKey,
-      },
-    });
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting file:", error);
@@ -271,4 +239,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+}, { auto: true, entityType: "file" });

@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { db } from "@/db";
 import { teamMembers, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { withAuditLog } from "@/lib/audit/withAuditLog";
 
 interface RouteParams {
   id: string;
@@ -13,7 +14,7 @@ interface RouteParams {
  * GET /api/teams/[id]/members
  * Get all members of a team
  */
-export const GET = withPermission<RouteParams>(
+export const GET = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.VIEW_TEAM,
   async (req: NextRequest, { params }) => {
     try {
@@ -42,13 +43,13 @@ export const GET = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "team-member", skip: () => true });
 
 /**
  * POST /api/teams/[id]/members
  * Add a user to a team
  */
-export const POST = withPermission<RouteParams>(
+export const POST = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.MANAGE_USER_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -98,13 +99,13 @@ export const POST = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "team-member" });
 
 /**
  * DELETE /api/teams/[id]/members
  * Remove a user from a team
  */
-export const DELETE = withPermission<RouteParams>(
+export const DELETE = withAuditLog<RouteParams>(withPermission<Promise<RouteParams>>(
   PERMISSIONS.MANAGE_USER_ROLES,
   async (req: NextRequest, { params }) => {
     try {
@@ -148,4 +149,4 @@ export const DELETE = withPermission<RouteParams>(
       );
     }
   }
-);
+), { auto: true, entityType: "team-member" });
