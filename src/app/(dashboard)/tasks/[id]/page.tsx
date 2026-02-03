@@ -1,27 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChatPanel, type ChatMessage } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FileUpload } from "@/components/ui/file-upload";
-import { 
-  TRAFFIC_LIGHT_CONFIG, 
+import {
+  TRAFFIC_LIGHT_CONFIG,
   TASK_STATUS,
-  calculateTrafficLight,
-  type TaskStatus 
 } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  Edit, 
-  FileText, 
-  User,
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Edit,
+  FileText,
   Building2,
   Euro,
   Paperclip,
@@ -32,122 +28,323 @@ import {
   AlertTriangle,
   MessageCircle
 } from "lucide-react";
-// Sheet imports removed - using fullscreen overlay for mobile chat
+import {
+  fetchTaskDetails,
+  fetchTaskComments,
+  addComment,
+  submitTask,
+  completeTask,
+  returnTaskToCustomer,
+} from "./actions";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock task data
-const mockTask = {
-  id: "1",
-  title: "Kunden-Rechnungen Q1",
-  description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal. Bitte alle offenen Posten prüfen und die Rechnungen bis zum Fälligkeitsdatum versenden.",
-  bookingText: "Ausgangsrechnung Q1/2025",
-  amount: "12.450,00",
-  documentDate: "01.02.2025",
-  bookingDate: "15.02.2025",
-  dueDate: "15. Februar 2025",
-  status: "open" as TaskStatus,
-  createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days ago - YELLOW
+interface Task {
+  id: string;
+  bookingText: string | null;
+  amount: string | null;
+  documentDate: string | null;
+  bookingDate: string | null;
+  period: string | null;
+  status: "open" | "submitted" | "completed";
+  trafficLight: "green" | "yellow" | "red";
+  createdAt: Date;
+  updatedAt: Date;
   company: {
-    id: "c1",
-    name: "Mustermann GmbH",
-  },
-  assignee: {
-    id: "u1",
-    name: "Thomas Schmidt",
-    email: "thomas@example.com",
-    initials: "TS",
-  },
-  files: [
-    { id: "f1", name: "Rechnung_Q1_Entwurf.pdf", size: "245 KB", status: "approved" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
-    { id: "f2", name: "Kundenliste_2025.xlsx", size: "128 KB", status: "pending" as "pending" | "approved" | "rejected", uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), uploadedBy: "Max Mustermann" },
-  ],
-  updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-};
+    id: string;
+    name: string;
+  };
+  comments: Array<{
+    id: string;
+    content: string;
+    createdAt: Date;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+    };
+  }>;
+  files: Array<{
+    id: string;
+    fileName: string;
+    fileSize: number | null;
+    createdAt: Date;
+    user: {
+      id: string;
+      name: string | null;
+    };
+  }>;
+}
 
-// Mock chat messages
-const taskMessages: ChatMessage[] = [
-  {
-    id: "1",
-    content: "Ich habe den Entwurf hochgeladen. Bitte prüfen.",
-    sender: { name: "Max Mustermann", initials: "MM", isCurrentUser: false },
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    attachments: [
-      { id: "a1", name: "Rechnung_Q1_Entwurf.pdf", type: "pdf", size: "245 KB", status: "approved" }
-    ]
-  },
-  {
-    id: "2",
-    content: "Danke! Schaue ich mir gleich an.",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000),
-  },
-  {
-    id: "3",
-    content: "Der Beleg wurde freigegeben. ✓",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 22 * 60 * 60 * 1000),
-  },
-  {
-    id: "4",
-    content: "Bei Kunde Müller fehlt noch die Adressänderung. Bitte korrigieren.",
-    sender: { name: "Anna Müller", initials: "AM", isCurrentUser: true },
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
-];
-
-const FILE_STATUS_CONFIG = {
-  pending: { label: "Hochgeladen", color: "bg-yellow-100 text-yellow-700", description: "Wartet auf Freigabe" },
-  approved: { label: "Freigegeben", color: "bg-green-100 text-green-700", description: "Vom Mitarbeiter bestätigt" },
-  rejected: { label: "Abgelehnt", color: "bg-red-100 text-red-700", description: "Bitte erneut hochladen" },
-};
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("de-DE", {
+function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { isEmployee, isCustomer, permissions } = useRole();
-  const [task, setTask] = useState(mockTask);
+  const { toast } = useToast();
+  const [task, setTask] = useState<Task | null>(null);
+  const [comments, setComments] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnComment, setReturnComment] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
-  
-  // Calculate traffic light
-  const daysSinceCreation = Math.floor(
-    (Date.now() - task.createdAt.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const trafficLight = calculateTrafficLight(daysSinceCreation);
-  const trafficConfig = TRAFFIC_LIGHT_CONFIG[trafficLight];
-  const statusConfig = TASK_STATUS[task.status];
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+
+  // Fetch task details
+  useEffect(() => {
+    const loadTask = async () => {
+      try {
+        const taskData = await fetchTaskDetails(id);
+        setTask(taskData as unknown as Task);
+
+        // Get current user ID from first comment if available
+        const session = await fetch("/api/auth/session").then(r => r.json());
+        setCurrentUserId(session?.user?.id || "");
+      } catch (error) {
+        console.error("Failed to fetch task:", error);
+        toast({
+          title: "Fehler",
+          description: "Aufgabe konnte nicht geladen werden",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTask();
+  }, [id, toast]);
+
+  // Fetch comments
+  useEffect(() => {
+    const loadComments = async () => {
+      try {
+        const commentsData = await fetchTaskComments(id);
+
+        // Transform to ChatMessage format
+        const chatMessages: ChatMessage[] = commentsData.map((comment) => {
+          const initials = comment.user.name
+            ? comment.user.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)
+            : comment.user.email.slice(0, 2).toUpperCase();
+
+          return {
+            id: comment.id,
+            content: comment.content,
+            sender: {
+              name: comment.user.name || comment.user.email,
+              initials,
+              isCurrentUser: comment.user.id === currentUserId,
+            },
+            timestamp: comment.createdAt ? new Date(comment.createdAt) : new Date(),
+          };
+        });
+
+        setComments(chatMessages);
+      } catch (error) {
+        console.error("Failed to fetch comments:", error);
+      }
+    };
+
+    if (currentUserId) {
+      loadComments();
+
+      // Poll for new comments every 10 seconds
+      const interval = setInterval(loadComments, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [id, currentUserId]);
+
+  // Handle sending messages
+  const handleSendMessage = async (content: string, attachments?: File[]) => {
+    if (!content.trim() && !attachments?.length) return;
+
+    try {
+      // Send comment
+      if (content.trim()) {
+        await addComment(id, content);
+      }
+
+      // TODO: Handle file attachments
+      if (attachments?.length) {
+        console.log("Uploading attachments:", attachments);
+        // Upload via existing API route
+      }
+
+      // Refresh comments
+      const commentsData = await fetchTaskComments(id);
+      const chatMessages: ChatMessage[] = commentsData.map((comment) => {
+        const initials = comment.user.name
+          ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+          : comment.user.email.slice(0, 2).toUpperCase();
+
+        return {
+          id: comment.id,
+          content: comment.content,
+          sender: {
+            name: comment.user.name || comment.user.email,
+            initials,
+            isCurrentUser: comment.user.id === currentUserId,
+          },
+          timestamp: comment.createdAt ? new Date(comment.createdAt) : new Date(),
+        };
+      });
+      setComments(chatMessages);
+
+      toast({
+        title: "Kommentar gesendet",
+        description: "Ihr Kommentar wurde erfolgreich hinzugefügt",
+      });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast({
+        title: "Fehler",
+        description: "Kommentar konnte nicht gesendet werden",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Action handlers
-  const handleSubmit = () => {
-    // Customer submits task
-    setTask({ ...task, status: "submitted" });
-    // TODO: API call
-    console.log("Task submitted");
+  const handleSubmit = async () => {
+    try {
+      await submitTask(id);
+      const updatedTask = await fetchTaskDetails(id);
+      setTask(updatedTask as unknown as Task);
+      toast({
+        title: "Eingereicht",
+        description: "Aufgabe wurde erfolgreich eingereicht",
+      });
+    } catch (error) {
+      console.error("Failed to submit task:", error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht eingereicht werden",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleComplete = () => {
-    // Employee completes task
-    setTask({ ...task, status: "completed" });
-    // TODO: API call
-    console.log("Task completed");
+  const handleComplete = async () => {
+    try {
+      await completeTask(id);
+      const updatedTask = await fetchTaskDetails(id);
+      setTask(updatedTask as unknown as Task);
+      toast({
+        title: "Abgeschlossen",
+        description: "Aufgabe wurde erfolgreich abgeschlossen",
+      });
+    } catch (error) {
+      console.error("Failed to complete task:", error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht abgeschlossen werden",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleReturn = () => {
+  const handleReturn = async () => {
     if (!returnComment.trim()) return;
-    // Employee returns task to customer with comment
-    setTask({ ...task, status: "open" });
-    setShowReturnDialog(false);
-    setReturnComment("");
-    // TODO: API call with comment
-    console.log("Task returned with comment:", returnComment);
+
+    try {
+      await returnTaskToCustomer(id, returnComment);
+      const updatedTask = await fetchTaskDetails(id);
+      setTask(updatedTask as unknown as Task);
+      setShowReturnDialog(false);
+      setReturnComment("");
+      toast({
+        title: "Zurückgesendet",
+        description: "Aufgabe wurde an den Kunden zurückgesendet",
+      });
+    } catch (error) {
+      console.error("Failed to return task:", error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht zurückgesendet werden",
+        variant: "destructive",
+      });
+    }
   };
+
+  const handleFileUpload = async (files: File[]) => {
+    try {
+      // Upload files via existing API route
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(`/api/tasks/${id}/files`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Upload failed");
+        }
+      }
+
+      // Refresh task to get updated files
+      const updatedTask = await fetchTaskDetails(id);
+      setTask(updatedTask as unknown as Task);
+
+      toast({
+        title: "Hochgeladen",
+        description: `${files.length} Datei(en) erfolgreich hochgeladen`,
+      });
+    } catch (error) {
+      console.error("Failed to upload files:", error);
+      toast({
+        title: "Fehler",
+        description: "Dateien konnten nicht hochgeladen werden",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-slate-500">Lade Aufgabe...</div>
+      </div>
+    );
+  }
+
+  if (!task) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <h2 className="text-xl font-semibold text-slate-700">Aufgabe nicht gefunden</h2>
+        <p className="text-slate-500 mt-2">Die angeforderte Aufgabe existiert nicht.</p>
+        <Link href="/tasks" className="mt-4">
+          <Button>Zurück zur Übersicht</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Calculate traffic light
+  const daysSinceCreation = Math.floor(
+    (Date.now() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const trafficLight = task.trafficLight;
+  const trafficConfig = TRAFFIC_LIGHT_CONFIG[trafficLight];
+  const statusConfig = TASK_STATUS[task.status];
 
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6">
@@ -191,8 +388,9 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               </Badge>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">{task.title}</h1>
-          <p className="text-slate-500 mt-2">{task.description}</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {task.bookingText || "Keine Beschreibung"}
+          </h1>
         </div>
 
         {/* ACTION BUTTONS based on role and status */}
@@ -220,8 +418,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
                   {/* EMPLOYEE: Zurück an Kunde (when submitted) */}
                   {isEmployee && task.status === "submitted" && permissions.canReturnTask && (
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setShowReturnDialog(true)}
                       className="border-orange-300 text-orange-700 hover:bg-orange-50"
                     >
@@ -258,7 +456,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                     <Button variant="outline" onClick={() => setShowReturnDialog(false)}>
                       Abbrechen
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleReturn}
                       disabled={!returnComment.trim()}
                       className="bg-orange-600 hover:bg-orange-700"
@@ -297,13 +495,6 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
-                <div>
-                  <div className="text-sm font-medium">Fälligkeitsdatum</div>
-                  <div className="text-sm text-slate-500">{task.dueDate}</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
                 <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Mandant</div>
@@ -311,24 +502,17 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <User className="w-5 h-5 text-slate-400 mt-0.5" />
-                <div>
-                  <div className="text-sm font-medium">Zugewiesen an</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Avatar className="w-6 h-6">
-                      <AvatarFallback className="text-xs bg-blue-100 text-blue-600">
-                        {task.assignee.initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-slate-500">{task.assignee.name}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
                 <Clock className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Erstellt am</div>
                   <div className="text-sm text-slate-500">{formatDate(task.createdAt)}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <div className="text-sm font-medium">Zeitraum</div>
+                  <div className="text-sm text-slate-500">{task.period || "Nicht zugewiesen"}</div>
                 </div>
               </div>
             </CardContent>
@@ -344,28 +528,32 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Buchungstext</div>
-                  <div className="text-sm text-slate-500">{task.bookingText}</div>
+                  <div className="text-sm text-slate-500">{task.bookingText || "Nicht vorhanden"}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Euro className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Betrag</div>
-                  <div className="text-sm text-slate-500">€ {task.amount}</div>
+                  <div className="text-sm text-slate-500">
+                    € {task.amount || "0.00"}
+                  </div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Belegdatum</div>
-                  <div className="text-sm text-slate-500">{task.documentDate}</div>
+                  <div className="text-sm text-slate-500">
+                    {task.documentDate ? formatDate(task.documentDate) : "Nicht vorhanden"}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Attachments with approval status */}
+        {/* Attachments */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -375,56 +563,29 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {task.files.map((file) => {
-                const statusConf = FILE_STATUS_CONFIG[file.status];
-                return (
-                  <div 
-                    key={file.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
-                  >
-                    {/* File info */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileText className="w-5 h-5 text-blue-600 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{file.name}</div>
-                        <div className="text-xs text-slate-400">
-                          {file.size} • {file.uploadedBy} • {formatDate(file.uploadedAt)}
-                        </div>
+              {task.files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
+                >
+                  {/* File info */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{file.fileName}</div>
+                      <div className="text-xs text-slate-400">
+                        {file.fileSize && formatFileSize(file.fileSize)} • {file.user.name || "Unbekannt"} • {formatDate(file.createdAt)}
                       </div>
                     </div>
-                    {/* Status & Actions - own row on mobile */}
-                    <div className="flex items-center gap-2 pl-8 sm:pl-0">
-                      <Badge className={`text-xs ${statusConf.color} border-0 shrink-0`}>
-                        {file.status === "approved" && <CheckCircle className="w-3 h-3 mr-1" />}
-                        {file.status === "rejected" && <XCircle className="w-3 h-3 mr-1" />}
-                        {file.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
-                        {statusConf.label}
-                      </Badge>
-                      {/* Employee can approve/reject pending files */}
-                      {isEmployee && file.status === "pending" && (
-                        <div className="flex gap-1 ml-2">
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50">
-                            <CheckCircle className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50">
-                            <XCircle className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
 
               {/* Upload Area - only if task is not completed */}
               {task.status !== "completed" && (
                 <div className="mt-4 pt-4 border-t">
                   <FileUpload
-                    onUpload={async (files) => {
-                      // TODO: Upload to MinIO
-                      console.log("Uploading files:", files);
-                      await new Promise(r => setTimeout(r, 1500));
-                    }}
+                    onUpload={handleFileUpload}
                     maxFiles={5}
                     maxSizeMB={10}
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -445,10 +606,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
       {/* Task Chat - Desktop: side panel */}
       <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
-        <ChatPanel 
-          title="KOMMENTARE" 
+        <ChatPanel
+          title="KOMMENTARE"
           taskId={id}
-          messages={taskMessages}
+          messages={comments}
+          onSendMessage={handleSendMessage}
           collapsible
         />
       </div>
@@ -460,9 +622,9 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         size="icon"
       >
         <MessageCircle className="h-6 w-6" />
-        {taskMessages.length > 0 && (
+        {comments.length > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {taskMessages.length}
+            {comments.length}
           </span>
         )}
       </Button>
@@ -474,8 +636,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           <div className="px-4 sm:px-6 h-14 border-b border-slate-200 shrink-0">
             <div className="max-w-xl mx-auto h-full flex items-center justify-between">
               <h2 className="font-semibold text-lg">Kommentare</h2>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
                 onClick={() => setIsChatOpen(false)}
                 className="h-10 w-10"
@@ -486,10 +648,11 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           </div>
           {/* Chat Content */}
           <div className="flex-1 overflow-hidden">
-            <ChatPanel 
-              title="KOMMENTARE" 
+            <ChatPanel
+              title="KOMMENTARE"
               taskId={id}
-              messages={taskMessages}
+              messages={comments}
+              onSendMessage={handleSendMessage}
               hideHeader
             />
           </div>
