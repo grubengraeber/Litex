@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewToggle } from "@/components/tasks/view-toggle";
+import { UsersDataTable } from "@/components/users/users-data-table";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +78,19 @@ export default function UsersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [view, setView] = useState<"grid" | "table">("table");
+
+  useEffect(() => {
+    const savedView = localStorage.getItem("users-view");
+    if (savedView === "grid" || savedView === "table") {
+      setView(savedView);
+    }
+  }, []);
+
+  const handleViewChange = (newView: "grid" | "table") => {
+    setView(newView);
+    localStorage.setItem("users-view", newView);
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -262,8 +277,9 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Benutzer-Verwaltung</h1>
-          <p className="text-slate-500 mt-1">{users.length} Benutzer</p>
+          <p className="text-slate-500 mt-1">{filteredUsers.length} Benutzer</p>
         </div>
+        <ViewToggle view={view} onViewChange={handleViewChange} />
       </div>
 
       {/* Search */}
@@ -278,13 +294,21 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Alle Benutzer</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
+      {/* Users Content */}
+      {view === "table" ? (
+        <UsersDataTable
+          users={filteredUsers}
+          onAssignRole={openRoleDialog}
+          onToggleStatus={handleToggleStatus}
+          onDelete={handleDeleteUser}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Alle Benutzer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Benutzer</TableHead>
@@ -406,6 +430,7 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
+      )}
 
       {/* Assign Role Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
