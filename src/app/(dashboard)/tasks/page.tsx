@@ -1,25 +1,15 @@
 "use client";
 
 import { Suspense, useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
 import { TasksTable } from "@/components/tasks/tasks-table";
 import { ViewToggle } from "@/components/tasks/view-toggle";
+import { TaskFiltersBar } from "@/components/tasks/task-filters";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  MONTHS,
-  FILTER_OPTIONS,
-  type TaskStatus,
-} from "@/lib/constants";
+import { type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
-import {
-  Plus,
-  Search,
-  SlidersHorizontal,
-  Building2,
-  ChevronDown,
-} from "lucide-react";
+import { useTaskFilters } from "@/hooks/use-task-filters";
+import { Plus } from "lucide-react";
 import { fetchTasks, fetchCompanies } from "../actions";
 
 interface Task {
@@ -46,17 +36,12 @@ interface Company {
 }
 
 function TasksContent() {
-  const searchParams = useSearchParams();
   const { isEmployee, isCustomer } = useRole();
-  const [selectedCompany, setSelectedCompany] = useState("all");
-  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const { filters, setFilter, clearFilters, activeFilterCount } = useTaskFilters();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "table">("grid");
-
-  const filter = searchParams.get("filter") || "all";
-  const month = searchParams.get("month");
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -85,12 +70,15 @@ function TasksContent() {
     const loadTasks = async () => {
       setLoading(true);
       try {
-        const filters = {
-          period: month || undefined,
-          companyId: selectedCompany !== "all" ? selectedCompany : undefined,
+        const apiFilters = {
+          status: filters.status,
+          trafficLight: filters.trafficLight,
+          period: filters.period,
+          companyId: filters.companyId,
+          search: filters.search,
         };
 
-        const fetchedTasks = await fetchTasks(filters);
+        const fetchedTasks = await fetchTasks(apiFilters);
         setTasks(fetchedTasks as unknown as Task[]);
       } catch (error) {
         console.error("Failed to fetch tasks:", error);
@@ -100,28 +88,10 @@ function TasksContent() {
     };
 
     loadTasks();
-  }, [month, selectedCompany]);
+  }, [filters]);
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      // Status filter
-      switch (filter) {
-        case "open":
-          return task.status === "open";
-        case "submitted":
-          return task.status === "submitted";
-        case "completed":
-          return task.status === "completed";
-        case "red":
-          return task.trafficLight === "red" && task.status !== "completed";
-        case "yellow":
-          return task.trafficLight === "yellow" && task.status !== "completed";
-        case "all":
-        default:
-          return true;
-      }
-    });
-  }, [tasks, filter]);
+  // Tasks are already filtered by API, just use them directly
+  const filteredTasks = tasks;
 
   // For grid view, convert to TaskCard format and sort
   const gridTasks = useMemo(() => {
@@ -152,9 +122,6 @@ function TasksContent() {
     }));
   }, [filteredTasks]);
 
-  const filterLabel =
-    FILTER_OPTIONS.find((f) => f.key === filter)?.label || "Alle";
-  const monthLabel = month ? MONTHS.find((m) => m.key === month)?.full : null;
   const taskCount = view === "grid" ? gridTasks.length : tableTasks.length;
 
   if (loading) {
@@ -174,9 +141,8 @@ function TasksContent() {
             {isCustomer ? "Meine Aufgaben" : "Alle Aufgaben"}
           </h1>
           <p className="text-sm sm:text-base text-slate-500 mt-1 break-words">
-            {filterLabel}
-            {monthLabel && ` • ${monthLabel}`}
-            {` • ${taskCount} Aufgaben`}
+            {taskCount} {taskCount === 1 ? "Aufgabe" : "Aufgaben"}
+            {activeFilterCount > 0 && ` • ${activeFilterCount} Filter aktiv`}
             {view === "grid" && (
               <span className="hidden sm:inline text-xs ml-2">
                 (Sortiert nach Dringlichkeit)
@@ -187,44 +153,6 @@ function TasksContent() {
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* View Toggle */}
           <ViewToggle view={view} onViewChange={handleViewChange} />
-          {/* Company Filter for employees */}
-          {isEmployee && (
-            <div className="relative">
-              <Button
-                variant="outline"
-                onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
-                className="w-auto"
-              >
-                <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span className="truncate max-w-[150px] sm:max-w-none">
-                  {companies.find((c) => c.id === selectedCompany)?.name ||
-                    "Alle Mandanten"}
-                </span>
-                <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
-              </Button>
-
-              {showCompanyDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
-                  {companies.map((company) => (
-                    <button
-                      key={company.id}
-                      onClick={() => {
-                        setSelectedCompany(company.id);
-                        setShowCompanyDropdown(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
-                        selectedCompany === company.id
-                          ? "bg-blue-50 text-blue-700"
-                          : ""
-                      }`}
-                    >
-                      {company.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {isEmployee && (
             <Button className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">
@@ -236,20 +164,15 @@ function TasksContent() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex items-center gap-2 sm:gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Aufgaben durchsuchen..."
-            className="pl-10 text-sm sm:text-base"
-          />
-        </div>
-        <Button variant="outline" size="icon" className="flex-shrink-0">
-          <SlidersHorizontal className="w-4 h-4" />
-        </Button>
-      </div>
+      {/* Filters */}
+      <TaskFiltersBar
+        filters={filters}
+        onFilterChange={setFilter}
+        onClearFilters={clearFilters}
+        activeFilterCount={activeFilterCount}
+        companies={companies}
+        showCompanyFilter={isEmployee}
+      />
 
       {/* Traffic Light Legend */}
       <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm bg-slate-50 p-3 rounded-lg">
