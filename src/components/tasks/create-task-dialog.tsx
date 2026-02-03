@@ -12,13 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
@@ -120,23 +114,19 @@ export function CreateTaskDialog({
             <Label htmlFor="company">
               Mandant <span className="text-red-500">*</span>
             </Label>
-            <Select
+            <Combobox
+              options={companies.map((company) => ({
+                value: company.id,
+                label: company.name,
+              }))}
               value={formData.companyId}
               onValueChange={(value) =>
                 setFormData((prev) => ({ ...prev, companyId: value }))
               }
-            >
-              <SelectTrigger id="company">
-                <SelectValue placeholder="Mandant auswählen..." />
-              </SelectTrigger>
-              <SelectContent>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Mandant auswählen..."
+              searchPlaceholder="Mandant suchen..."
+              emptyText="Kein Mandant gefunden."
+            />
           </div>
 
           {/* Booking Text */}
