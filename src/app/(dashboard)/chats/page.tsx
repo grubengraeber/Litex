@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -8,6 +8,7 @@ import { MessageSquare, Building2, Search } from "lucide-react";
 import { TRAFFIC_LIGHT_CONFIG, TASK_STATUS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ChatView } from "@/components/chats/chat-view";
 
 interface TaskWithComments {
   id: string;
@@ -50,7 +51,7 @@ function formatRelativeTime(date: Date): string {
   });
 }
 
-export default function ChatsPage() {
+function ChatsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedTaskId = searchParams.get("task");
@@ -239,11 +240,13 @@ export default function ChatsPage() {
       {/* Right Side - Chat Content */}
       <div className="flex-1 bg-slate-50 hidden md:flex flex-col">
         {selectedTaskId ? (
-          <iframe
-            src={`/chats/${selectedTaskId}`}
-            className="w-full h-full border-0"
-            title="Chat"
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <div className="text-slate-500">Lade Chat...</div>
+            </div>
+          }>
+            <ChatView taskId={selectedTaskId} />
+          </Suspense>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <MessageSquare className="w-16 h-16 text-slate-300 mb-4" />
@@ -257,5 +260,17 @@ export default function ChatsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ChatsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <div className="text-slate-500">Lade Chats...</div>
+      </div>
+    }>
+      <ChatsContent />
+    </Suspense>
   );
 }
