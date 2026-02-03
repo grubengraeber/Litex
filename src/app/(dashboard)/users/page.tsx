@@ -30,7 +30,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ShieldCheck, UserCog, X } from "lucide-react";
+import {
+  Search,
+  ShieldCheck,
+  UserCog,
+  X,
+  Ban,
+  CheckCircle,
+  Trash2,
+  MoreVertical,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 interface Role {
@@ -145,6 +161,61 @@ export default function UsersPage() {
     }
   }
 
+  async function handleToggleStatus(user: User) {
+    const newStatus = user.status === "active" ? "disabled" : "active";
+    const action = newStatus === "disabled" ? "deaktivieren" : "aktivieren";
+
+    if (!confirm(`Möchten Sie ${user.name || user.email} ${action}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        toast.success(`Benutzer ${action}t`);
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || `Fehler beim ${action.slice(0, -2)}en`);
+      }
+    } catch (error) {
+      console.error("Error toggling status:", error);
+      toast.error("Fehler beim Aktualisieren");
+    }
+  }
+
+  async function handleDeleteUser(user: User) {
+    const confirmation = prompt(
+      `WARNUNG: Dies löscht den Benutzer "${user.name || user.email}" PERMANENT.\n\nAlle Daten dieses Benutzers werden unwiderruflich gelöscht.\n\nGeben Sie "LÖSCHEN" ein, um fortzufahren:`
+    );
+
+    if (confirmation !== "LÖSCHEN") {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast.success("Benutzer gelöscht");
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Fehler beim Löschen");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("Fehler beim Löschen");
+    }
+  }
+
   const filteredUsers = users.filter((user) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -220,7 +291,7 @@ export default function UsersPage() {
                 <TableHead>Typ</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Zugewiesene Rollen</TableHead>
-                <TableHead className="w-32">Aktionen</TableHead>
+                <TableHead className="text-right">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -283,16 +354,50 @@ export default function UsersPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openRoleDialog(user)}
-                        className="gap-2"
-                      >
-                        <UserCog className="w-4 h-4" />
-                        Rolle zuweisen
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openRoleDialog(user)}
+                          className="gap-2"
+                        >
+                          <UserCog className="w-4 h-4" />
+                          Rolle zuweisen
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleToggleStatus(user)}
+                            >
+                              {user.status === "active" ? (
+                                <>
+                                  <Ban className="w-4 h-4 mr-2" />
+                                  Deaktivieren
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Aktivieren
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteUser(user)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Löschen
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

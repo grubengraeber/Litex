@@ -120,3 +120,55 @@ export async function PATCH(
     );
   }
 }
+
+// DELETE /api/users/[id] - Delete user
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    // Check permission
+    const canDelete = await userHasPermission(
+      session.user.id,
+      PERMISSIONS.DELETE_USERS
+    );
+
+    if (!canDelete) {
+      return NextResponse.json(
+        { error: "Keine Berechtigung zum Löschen von Benutzern" },
+        { status: 403 }
+      );
+    }
+
+    // Prevent self-deletion
+    if (id === session.user.id) {
+      return NextResponse.json(
+        { error: "Sie können sich nicht selbst löschen" },
+        { status: 400 }
+      );
+    }
+
+    // Delete user (cascade will delete related records)
+    const { db } = await import("@/db");
+    const { users } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    await db.delete(users).where(eq(users.id, id));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json(
+      { error: "Fehler beim Löschen des Benutzers" },
+      { status: 500 }
+    );
+  }
+}
