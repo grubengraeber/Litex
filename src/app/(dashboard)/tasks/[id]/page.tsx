@@ -285,18 +285,53 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
   const handleFileUpload = async (files: File[]) => {
     try {
-      // Upload files via existing API route
+      // Upload files using the two-step process (request URL → upload → confirm)
       for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const response = await fetch(`/api/tasks/${id}/files`, {
+        // Step 1: Request presigned upload URL
+        const requestResponse = await fetch(`/api/tasks/${id}/files?action=requestUpload`, {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            mimeType: file.type,
+            fileSize: file.size,
+          }),
         });
 
-        if (!response.ok) {
-          throw new Error("Upload failed");
+        if (!requestResponse.ok) {
+          throw new Error("Failed to request upload URL");
+        }
+
+        const { uploadUrl, storageKey, bucket } = await requestResponse.json();
+
+        // Step 2: Upload file directly to S3/MinIO
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file to storage");
+        }
+
+        // Step 3: Confirm upload to create database record
+        const confirmResponse = await fetch(`/api/tasks/${id}/files?action=confirmUpload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storageKey,
+            bucket,
+            fileName: file.name,
+            mimeType: file.type,
+            fileSize: file.size,
+          }),
+        });
+
+        if (!confirmResponse.ok) {
+          throw new Error("Failed to confirm upload");
         }
       }
 
