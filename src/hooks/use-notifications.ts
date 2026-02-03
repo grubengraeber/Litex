@@ -88,7 +88,7 @@ export function useNotifications({ pollInterval = 30000 }: UseNotificationsOptio
 
       if (!res.ok) throw new Error("Fehler beim Aktualisieren");
       return true;
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, isRead: false } : n))
@@ -116,7 +116,7 @@ export function useNotifications({ pollInterval = 30000 }: UseNotificationsOptio
 
       if (!res.ok) throw new Error("Fehler beim Aktualisieren");
       return true;
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setNotifications(previousState);
       return false;

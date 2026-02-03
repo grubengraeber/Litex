@@ -181,7 +181,6 @@ export function ChatPanel({
     sending,
     sendComment,
     isOwnComment,
-    getReadStatus,
   } = useComments({ taskId: taskId || "", pollInterval: taskId ? 5000 : 0 });
 
   // Convert comments to messages format, or use provided/default messages
