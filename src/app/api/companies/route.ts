@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getAllCompanies, getCompanyById, createCompany, updateCompany } from "@/db/queries";
 import { z } from "zod";
+import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
 
 const createCompanySchema = z.object({
   name: z.string().min(1).max(255),
@@ -74,9 +75,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.role !== "employee") {
+  const canCreateClients = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.CREATE_CLIENTS
+  );
+
+  if (!canCreateClients) {
     return NextResponse.json(
-      { error: "Nur Mitarbeiter können Mandanten erstellen" },
+      { error: "Keine Berechtigung zum Erstellen von Mandanten" },
       { status: 403 }
     );
   }

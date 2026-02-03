@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getTasksForUser, createTask } from "@/db/queries";
 import { z } from "zod";
+import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
 
 const createTaskSchema = z.object({
   companyId: z.string().uuid(),
@@ -17,9 +18,22 @@ const createTaskSchema = z.object({
 // GET /api/tasks - List tasks (filtered by user role)
 export async function GET(request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check permission
+  const canViewTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.VIEW_TASKS
+  );
+
+  if (!canViewTasks) {
+    return NextResponse.json(
+      { error: "Keine Berechtigung zum Anzeigen von Aufgaben" },
+      { status: 403 }
+    );
   }
 
   const { searchParams } = new URL(request.url);
@@ -54,18 +68,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/tasks - Create task (employees only)
+// POST /api/tasks - Create task
 export async function POST(request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Only employees can create tasks
-  if (session.user.role !== "employee") {
+  // Check permission
+  const canCreateTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.CREATE_TASKS
+  );
+
+  if (!canCreateTasks) {
     return NextResponse.json(
-      { error: "Nur Mitarbeiter können Aufgaben erstellen" },
+      { error: "Keine Berechtigung zum Erstellen von Aufgaben" },
       { status: 403 }
     );
   }

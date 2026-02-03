@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getAllUsers, getUsersByCompany, getUserById, createUser, updateUser, getUserByEmail } from "@/db/queries";
 import { z } from "zod";
 import nodemailer from "nodemailer";
+import { userHasPermission, PERMISSIONS, getUserRoles } from "@/lib/permissions";
 
 const inviteUserSchema = z.object({
   email: z.string().email(),
@@ -32,7 +33,7 @@ const transporter = nodemailer.createTransport({
 // GET /api/users - List users
 export async function GET(request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -41,11 +42,17 @@ export async function GET(request: NextRequest) {
   const userId = searchParams.get("id");
   const companyId = searchParams.get("companyId");
 
+  // Check if user has permission to view all users
+  const canViewAllUsers = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.VIEW_ALL_USERS
+  );
+
   try {
     // Get specific user
     if (userId) {
       const user = await getUserById(userId);
-      
+
       if (!user) {
         return NextResponse.json(
           { error: "Benutzer nicht gefunden" },
@@ -53,39 +60,49 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Customers can only see users from their company
-      if (
-        session.user.role === "customer" &&
-        user.companyId !== session.user.companyId
-      ) {
+      // Check access permissions
+      if (!canViewAllUsers && user.companyId !== session.user.companyId) {
         return NextResponse.json(
           { error: "Kein Zugriff" },
           { status: 403 }
         );
       }
 
-      return NextResponse.json({ user });
+      // Include roles in response
+      const userRolesList = await getUserRoles(userId);
+
+      return NextResponse.json({
+        user: {
+          ...user,
+          roles: userRolesList
+        }
+      });
     }
 
-    // List users
-    if (session.user.role === "customer") {
-      // Customers can only see users from their company
+    // List users with their roles
+    let usersList;
+
+    if (!canViewAllUsers) {
+      // Users without permission can only see users from their company
       if (!session.user.companyId) {
         return NextResponse.json({ users: [] });
       }
-      
-      const users = await getUsersByCompany(session.user.companyId);
-      return NextResponse.json({ users });
+      usersList = await getUsersByCompany(session.user.companyId);
+    } else if (companyId) {
+      usersList = await getUsersByCompany(companyId);
+    } else {
+      usersList = await getAllUsers();
     }
 
-    // Employees can list all or filter by company
-    if (companyId) {
-      const users = await getUsersByCompany(companyId);
-      return NextResponse.json({ users });
-    }
+    // Add roles to each user
+    const usersWithRoles = await Promise.all(
+      usersList.map(async (user) => ({
+        ...user,
+        roles: await getUserRoles(user.id),
+      }))
+    );
 
-    const users = await getAllUsers();
-    return NextResponse.json({ users });
+    return NextResponse.json({ users: usersWithRoles });
   } catch (error) {
     console.error("Error fetching users:", error);
     return NextResponse.json(
@@ -95,17 +112,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/users - Invite user (employees only)
+// POST /api/users - Invite user
 export async function POST(request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.role !== "employee") {
+  // Check permission
+  const canInvite = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.INVITE_USERS
+  );
+
+  if (!canInvite) {
     return NextResponse.json(
-      { error: "Nur Mitarbeiter können Benutzer einladen" },
+      { error: "Keine Berechtigung zum Einladen von Benutzern" },
       { status: 403 }
     );
   }
@@ -219,8 +242,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ user });
     }
 
-    // Only employees can update other users
-    if (session.user.role !== "employee") {
+    // Check permission to edit other users
+    const canEditUsers = await userHasPermission(
+      session.user.id,
+      PERMISSIONS.EDIT_USERS
+    );
+
+    if (!canEditUsers) {
       return NextResponse.json(
         { error: "Keine Berechtigung" },
         { status: 403 }

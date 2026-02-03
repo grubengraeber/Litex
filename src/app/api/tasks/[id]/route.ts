@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getTaskById, updateTask, deleteTask } from "@/db/queries";
 import { z } from "zod";
+import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
 
 const updateTaskSchema = z.object({
   status: z.enum(["open", "submitted", "completed"]).optional(),
@@ -14,9 +15,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check permission
+  const canViewTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.VIEW_TASKS
+  );
+
+  if (!canViewTasks) {
+    return NextResponse.json(
+      { error: "Keine Berechtigung zum Anzeigen von Aufgaben" },
+      { status: 403 }
+    );
   }
 
   const { id } = await params;
@@ -31,11 +45,13 @@ export async function GET(
       );
     }
 
-    // Check access for customers
-    if (
-      session.user.role === "customer" &&
-      task.companyId !== session.user.companyId
-    ) {
+    // Check if user can view all tasks or just own company tasks
+    const canViewAllTasks = await userHasPermission(
+      session.user.id,
+      PERMISSIONS.VIEW_ALL_TASKS
+    );
+
+    if (!canViewAllTasks && task.companyId !== session.user.companyId) {
       return NextResponse.json(
         { error: "Kein Zugriff auf diese Aufgabe" },
         { status: 403 }
@@ -58,10 +74,26 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Check permission
+  const canEditTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.EDIT_TASKS
+  );
+
+  const canSubmitTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.SUBMIT_TASKS
+  );
+
+  const canCompleteTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.COMPLETE_TASKS
+  );
 
   const { id } = await params;
 
@@ -75,11 +107,13 @@ export async function PATCH(
       );
     }
 
-    // Check access for customers
-    if (
-      session.user.role === "customer" &&
-      task.companyId !== session.user.companyId
-    ) {
+    // Check access
+    const canViewAllTasks = await userHasPermission(
+      session.user.id,
+      PERMISSIONS.VIEW_ALL_TASKS
+    );
+
+    if (!canViewAllTasks && task.companyId !== session.user.companyId) {
       return NextResponse.json(
         { error: "Kein Zugriff auf diese Aufgabe" },
         { status: 403 }
@@ -88,6 +122,28 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateTaskSchema.parse(body);
+
+    // Check specific status change permissions
+    if (data.status === "submitted" && !canSubmitTasks) {
+      return NextResponse.json(
+        { error: "Keine Berechtigung zum Einreichen von Aufgaben" },
+        { status: 403 }
+      );
+    }
+
+    if (data.status === "completed" && !canCompleteTasks) {
+      return NextResponse.json(
+        { error: "Keine Berechtigung zum Abschließen von Aufgaben" },
+        { status: 403 }
+      );
+    }
+
+    if (!canEditTasks && data.status !== "submitted" && data.status !== "completed") {
+      return NextResponse.json(
+        { error: "Keine Berechtigung zum Bearbeiten von Aufgaben" },
+        { status: 403 }
+      );
+    }
 
     // If completing, add completion info
     const updateData: Parameters<typeof updateTask>[1] = { ...data };
@@ -118,21 +174,26 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/tasks/[id] - Delete task (employees only)
+// DELETE /api/tasks/[id] - Delete task
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Only employees can delete tasks
-  if (session.user.role !== "employee") {
+  // Check permission
+  const canDeleteTasks = await userHasPermission(
+    session.user.id,
+    PERMISSIONS.DELETE_TASKS
+  );
+
+  if (!canDeleteTasks) {
     return NextResponse.json(
-      { error: "Nur Mitarbeiter können Aufgaben löschen" },
+      { error: "Keine Berechtigung zum Löschen von Aufgaben" },
       { status: 403 }
     );
   }

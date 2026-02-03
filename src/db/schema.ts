@@ -15,6 +15,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "file_approved",
   "file_rejected"
 ]);
+export const fileStatusEnum = pgEnum("file_status", ["pending", "approved", "rejected"]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -68,6 +69,42 @@ export const authCodes = pgTable("auth_codes", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+// Permissions - Granular permission definitions
+export const permissions = pgTable("permissions", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  category: text("category").notNull(), // e.g., "tasks", "users", "files", "navigation"
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+// Roles - Role definitions
+export const roles = pgTable("roles", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isSystem: boolean("is_system").default(false), // System roles can't be deleted/renamed
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
+// Role Permissions - Junction table
+export const rolePermissions = pgTable("role_permissions", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  permissionId: uuid("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+// User Roles - Assigns roles to users
+export const userRoles = pgTable("user_roles", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  assignedBy: text("assigned_by").references(() => users.id),
+  assignedAt: timestamp("assigned_at", { mode: "date" }).defaultNow(),
+});
+
 // Business tables
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -105,6 +142,12 @@ export const files = pgTable("files", {
   fileSize: integer("file_size"),
   bucket: text("bucket").default("kommunikation-uploads"),
   storageKey: text("storage_key").notNull(),
+  status: fileStatusEnum("status").default("pending"),
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at", { mode: "date" }),
+  rejectedBy: text("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at", { mode: "date" }),
+  rejectionReason: text("rejection_reason"),
   sentToFinmatics: boolean("sent_to_finmatics").default(false),
   finmaticsDocId: text("finmatics_doc_id"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
@@ -123,6 +166,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, { fields: [users.companyId], references: [companies.id] }),
   comments: many(comments),
   files: many(files),
+  userRoles: many(userRoles),
 }));
 
 export const companiesRelations = relations(companies, ({ many }) => ({
@@ -178,4 +222,25 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
   task: one(tasks, { fields: [notifications.taskId], references: [tasks.id] }),
   sourceComment: one(comments, { fields: [notifications.commentId], references: [comments.id] }),
+}));
+
+// RBAC Relations
+export const permissionsRelations = relations(permissions, ({ many }) => ({
+  rolePermissions: many(rolePermissions),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  rolePermissions: many(rolePermissions),
+  userRoles: many(userRoles),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(roles, { fields: [rolePermissions.roleId], references: [roles.id] }),
+  permission: one(permissions, { fields: [rolePermissions.permissionId], references: [permissions.id] }),
+}));
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+  user: one(users, { fields: [userRoles.userId], references: [users.id] }),
+  role: one(roles, { fields: [userRoles.roleId], references: [roles.id] }),
+  assignedByUser: one(users, { fields: [userRoles.assignedBy], references: [users.id] }),
 }));
