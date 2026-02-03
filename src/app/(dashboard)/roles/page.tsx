@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewToggle } from "@/components/tasks/view-toggle";
+import { RolesDataTable } from "@/components/roles/roles-data-table";
+import { RolesGrid } from "@/components/roles/roles-grid";
 import {
   Dialog,
   DialogContent,
@@ -14,21 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus,
-  Edit,
-  Trash2,
-  Shield,
-  ShieldAlert,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,10 +48,24 @@ export default function RolesPage() {
   const [categorizedPermissions, setCategorizedPermissions] = useState<CategorizedPermissions>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<"grid" | "table">("grid");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+
+  // Load view preference
+  useEffect(() => {
+    const savedView = localStorage.getItem("roles-view");
+    if (savedView === "grid" || savedView === "table") {
+      setView(savedView);
+    }
+  }, []);
+
+  const handleViewChange = (newView: "grid" | "table") => {
+    setView(newView);
+    localStorage.setItem("roles-view", newView);
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -240,13 +243,16 @@ export default function RolesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Rollen-Verwaltung</h1>
           <p className="text-slate-500 mt-1">
-            {roles.length} Rollen definiert
+            {filteredRoles.length} {filteredRoles.length === 1 ? "Rolle" : "Rollen"}
           </p>
         </div>
-        <Button onClick={openCreateDialog} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Neue Rolle
-        </Button>
+        <div className="flex items-center gap-3">
+          <ViewToggle view={view} onViewChange={handleViewChange} />
+          <Button onClick={openCreateDialog} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Neue Rolle
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -261,82 +267,36 @@ export default function RolesPage() {
         />
       </div>
 
-      {/* Roles Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Alle Rollen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Rolle</TableHead>
-                <TableHead>Beschreibung</TableHead>
-                <TableHead>Berechtigungen</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead className="w-24">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRoles.map((role) => (
-                <TableRow key={role.id}>
-                  <TableCell className="font-medium">{role.name}</TableCell>
-                  <TableCell className="text-slate-600">
-                    {role.description || "-"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-md">
-                      {role.permissions.slice(0, 3).map((perm) => (
-                        <Badge key={perm.id} variant="outline" className="text-xs">
-                          {perm.name}
-                        </Badge>
-                      ))}
-                      {role.permissions.length > 3 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{role.permissions.length - 3} mehr
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {role.isSystem ? (
-                      <Badge variant="default" className="gap-1">
-                        <ShieldAlert className="w-3 h-3" />
-                        System
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="gap-1">
-                        <Shield className="w-3 h-3" />
-                        Custom
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(role)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      {!role.isSystem && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openDeleteDialog(role)}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Roles Content */}
+      {filteredRoles.length > 0 ? (
+        view === "grid" ? (
+          <RolesGrid
+            roles={filteredRoles}
+            onEdit={openEditDialog}
+            onDelete={openDeleteDialog}
+          />
+        ) : (
+          <RolesDataTable
+            roles={filteredRoles}
+            onEdit={openEditDialog}
+            onDelete={openDeleteDialog}
+          />
+        )
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <span className="text-2xl">🛡️</span>
+          </div>
+          <h3 className="text-lg font-medium text-slate-700">
+            Keine Rollen gefunden
+          </h3>
+          <p className="text-slate-500 mt-1">
+            {searchQuery
+              ? "Versuchen Sie einen anderen Suchbegriff."
+              : "Es wurden noch keine Rollen definiert."}
+          </p>
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
