@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MessageSquare, Building2, Clock } from "lucide-react";
+import { MessageSquare, Building2, Search } from "lucide-react";
 import { TRAFFIC_LIGHT_CONFIG, TASK_STATUS } from "@/lib/constants";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface TaskWithComments {
   id: string;
@@ -46,41 +47,54 @@ function formatRelativeTime(date: Date): string {
   return new Date(date).toLocaleDateString("de-DE", {
     day: "2-digit",
     month: "2-digit",
-    year: "numeric",
   });
 }
 
 export default function ChatsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedTaskId = searchParams.get("task");
+
   const [tasks, setTasks] = useState<TaskWithComments[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        // Fetch all tasks with comments
         const response = await fetch("/api/tasks?includeComments=true");
         if (!response.ok) throw new Error("Failed to fetch tasks");
 
-        const data = await response.json() as TaskWithComments[];
+        const data = (await response.json()) as TaskWithComments[];
 
-        // Filter tasks that have at least one comment and sort by last comment date
         const tasksWithComments = data
           .filter((task) => task.commentCount > 0)
           .map((task) => ({
             ...task,
             createdAt: new Date(task.createdAt),
-            lastComment: task.lastComment ? {
-              ...task.lastComment,
-              createdAt: new Date(task.lastComment.createdAt),
-            } : null,
+            lastComment: task.lastComment
+              ? {
+                  ...task.lastComment,
+                  createdAt: new Date(task.lastComment.createdAt),
+                }
+              : null,
           }))
           .sort((a, b) => {
-            const aTime = a.lastComment ? new Date(a.lastComment.createdAt).getTime() : 0;
-            const bTime = b.lastComment ? new Date(b.lastComment.createdAt).getTime() : 0;
+            const aTime = a.lastComment
+              ? new Date(a.lastComment.createdAt).getTime()
+              : 0;
+            const bTime = b.lastComment
+              ? new Date(b.lastComment.createdAt).getTime()
+              : 0;
             return bTime - aTime;
           });
 
         setTasks(tasksWithComments);
+
+        // Auto-select first task if none selected
+        if (!selectedTaskId && tasksWithComments.length > 0) {
+          router.push(`/chats?task=${tasksWithComments[0].id}`);
+        }
       } catch (error) {
         console.error("Failed to fetch tasks:", error);
       } finally {
@@ -89,7 +103,13 @@ export default function ChatsPage() {
     };
 
     fetchTasks();
-  }, []);
+  }, [selectedTaskId, router]);
+
+  const filteredTasks = tasks.filter(
+    (task) =>
+      task.bookingText?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.company.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -103,7 +123,9 @@ export default function ChatsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
         <MessageSquare className="w-16 h-16 text-slate-300 mb-4" />
-        <h2 className="text-xl font-semibold text-slate-700 mb-2">Keine Chats vorhanden</h2>
+        <h2 className="text-xl font-semibold text-slate-700 mb-2">
+          Keine Chats vorhanden
+        </h2>
         <p className="text-slate-500">
           Es gibt noch keine Kommentare zu Aufgaben.
         </p>
@@ -112,101 +134,127 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Chats</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {tasks.length} {tasks.length === 1 ? "Unterhaltung" : "Unterhaltungen"}
-          </p>
+    <div className="flex h-[calc(100vh-4rem)] gap-0 -m-6">
+      {/* Left Sidebar - Chat List */}
+      <div className="w-full md:w-96 border-r border-slate-200 flex flex-col bg-white">
+        {/* Header */}
+        <div className="p-4 border-b border-slate-200">
+          <h1 className="text-xl font-bold text-slate-900 mb-3">Chats</h1>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Chats durchsuchen..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-3">
-        {tasks.map((task) => {
-          const trafficConfig = TRAFFIC_LIGHT_CONFIG[task.trafficLight];
-          const statusConfig = TASK_STATUS[task.status];
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredTasks.map((task) => {
+            const trafficConfig = TRAFFIC_LIGHT_CONFIG[task.trafficLight];
+            const statusConfig = TASK_STATUS[task.status];
+            const lastCommentUser = task.lastComment?.user;
+            const initials = lastCommentUser?.name
+              ? lastCommentUser.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)
+              : lastCommentUser?.email.slice(0, 2).toUpperCase() || "?";
 
-          const lastCommentUser = task.lastComment?.user;
-          const initials = lastCommentUser?.name
-            ? lastCommentUser.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)
-            : lastCommentUser?.email.slice(0, 2).toUpperCase() || "?";
+            const isSelected = selectedTaskId === task.id;
 
-          return (
-            <Link key={task.id} href={`/chats/${task.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    {/* Avatar */}
-                    <Avatar className="w-10 h-10 shrink-0 mt-1">
-                      <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
+            return (
+              <div
+                key={task.id}
+                onClick={() => router.push(`/chats?task=${task.id}`)}
+                className={cn(
+                  "p-4 border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50",
+                  isSelected && "bg-blue-50 border-l-4 border-l-blue-600"
+                )}
+              >
+                <div className="flex gap-3">
+                  <Avatar className="w-10 h-10 shrink-0">
+                    <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Header: Task title & badges */}
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-medium text-slate-900 truncate">
-                          {task.bookingText || "Keine Beschreibung"}
-                        </h3>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className={`w-2 h-2 rounded-full ${trafficConfig.color}`} />
-                          <Badge
-                            variant="outline"
-                            className={`${statusConfig.color} border-0 text-xs`}
-                          >
-                            {statusConfig.label}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Company */}
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-                        <Building2 className="w-3 h-3" />
-                        <span>{task.company.name}</span>
-                      </div>
-
-                      {/* Last comment preview */}
-                      {task.lastComment && (
-                        <div className="mb-2">
-                          <p className="text-sm text-slate-600 line-clamp-2">
-                            <span className="font-medium">
-                              {task.lastComment.user.name || task.lastComment.user.email}:
-                            </span>{" "}
-                            {task.lastComment.content}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Footer: Comment count & time */}
-                      <div className="flex items-center justify-between text-xs text-slate-400">
-                        <div className="flex items-center gap-1">
-                          <MessageSquare className="w-3 h-3" />
-                          <span>
-                            {task.commentCount} {task.commentCount === 1 ? "Kommentar" : "Kommentare"}
-                          </span>
-                        </div>
-                        {task.lastComment && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatRelativeTime(task.lastComment.createdAt)}</span>
-                          </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3
+                        className={cn(
+                          "font-medium truncate text-sm",
+                          isSelected ? "text-blue-900" : "text-slate-900"
                         )}
+                      >
+                        {task.bookingText || "Keine Beschreibung"}
+                      </h3>
+                      {task.lastComment && (
+                        <span className="text-xs text-slate-400 shrink-0">
+                          {formatRelativeTime(task.lastComment.createdAt)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+                      <Building2 className="w-3 h-3" />
+                      <span className="truncate">{task.company.name}</span>
+                    </div>
+
+                    {task.lastComment && (
+                      <p className="text-sm text-slate-600 line-clamp-1 mb-1">
+                        {task.lastComment.content}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${trafficConfig.color}`}
+                      />
+                      <Badge
+                        variant="outline"
+                        className="text-xs border-0 px-1.5 py-0"
+                      >
+                        {statusConfig.label}
+                      </Badge>
+                      <div className="flex items-center gap-1 text-xs text-slate-400">
+                        <MessageSquare className="w-3 h-3" />
+                        <span>{task.commentCount}</span>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right Side - Chat Content */}
+      <div className="flex-1 bg-slate-50 hidden md:flex flex-col">
+        {selectedTaskId ? (
+          <iframe
+            src={`/chats/${selectedTaskId}`}
+            className="w-full h-full border-0"
+            title="Chat"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <MessageSquare className="w-16 h-16 text-slate-300 mb-4" />
+            <h2 className="text-xl font-semibold text-slate-700 mb-2">
+              Wählen Sie einen Chat
+            </h2>
+            <p className="text-slate-500">
+              Klicken Sie auf eine Unterhaltung, um die Nachrichten anzuzeigen.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
