@@ -65,8 +65,8 @@ interface AuditLogData {
 export async function createAuditLog(data: AuditLogData): Promise<void> {
   try {
     await db.insert(auditLogs).values({
-      action: data.action,
-      entityType: data.entityType,
+      action: data.action as typeof data.action & AuditAction,
+      entityType: data.entityType as typeof data.entityType & EntityType,
       entityId: data.entityId,
       userId: data.userId,
       userEmail: data.userEmail,
@@ -97,7 +97,7 @@ export async function getAuditLogs(filters?: {
   offset?: number;
 }) {
   try {
-    let query = db.select().from(auditLogs);
+    const query = db.select().from(auditLogs);
 
     // Apply filters
     // Note: In a production app, you'd use drizzle's where() clauses here

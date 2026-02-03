@@ -5,6 +5,7 @@ import { files } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 const rejectSchema = z.object({
   reason: z.string().min(1).max(500),
@@ -58,6 +59,16 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    // Audit log
+    await auditLog(request, "REJECT", "file", {
+      entityId: id,
+      metadata: {
+        fileName: updated.fileName,
+        taskId: updated.taskId,
+        reason,
+      },
+    });
 
     return NextResponse.json({ file: updated });
   } catch (error) {

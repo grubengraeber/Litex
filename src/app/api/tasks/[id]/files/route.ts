@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getTaskById, getFilesForTask, createFile, deleteFile as deleteFileRecord } from "@/db/queries";
 import { getUploadUrl, getDownloadUrl, deleteFile as deleteS3File } from "@/lib/s3";
 import { z } from "zod";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 const requestUploadSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -67,8 +68,18 @@ export async function GET(
       }
 
       const { downloadUrl } = await getDownloadUrl(file.storageKey, file.fileName);
-      
-      return NextResponse.json({ 
+
+      // Audit log
+      await auditLog(request, "DOWNLOAD", "file", {
+        entityId: fileId,
+        metadata: {
+          fileName: file.fileName,
+          taskId: id,
+          storageKey: file.storageKey,
+        },
+      });
+
+      return NextResponse.json({
         file,
         downloadUrl,
       });
@@ -154,6 +165,18 @@ export async function POST(
         storageKey: data.storageKey,
       });
 
+      // Audit log
+      await auditLog(request, "UPLOAD", "file", {
+        entityId: file.id,
+        metadata: {
+          taskId: id,
+          fileName: data.fileName,
+          mimeType: data.mimeType,
+          fileSize: data.fileSize,
+          storageKey: data.storageKey,
+        },
+      });
+
       return NextResponse.json({ file }, { status: 201 });
     }
 
@@ -219,7 +242,7 @@ export async function DELETE(
 
     // Delete file record and get storage info
     const file = await deleteFileRecord(fileId);
-    
+
     // Delete from S3
     if (file?.storageKey) {
       try {
@@ -229,6 +252,16 @@ export async function DELETE(
         // Continue anyway - file record is deleted
       }
     }
+
+    // Audit log
+    await auditLog(request, "DELETE", "file", {
+      entityId: fileId,
+      metadata: {
+        taskId: id,
+        fileName: file?.fileName,
+        storageKey: file?.storageKey,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -4,6 +4,7 @@ import { getAllUsers, getUsersByCompany, getUserById, createUser, updateUser, ge
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import { userHasPermission, PERMISSIONS, getUserRoles } from "@/lib/permissions";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 const inviteUserSchema = z.object({
   email: z.string().email(),
@@ -197,6 +198,17 @@ export async function POST(request: NextRequest) {
       text: `Du wurdest zu Litex eingeladen! Melde dich hier an: ${loginUrl}`,
     });
 
+    // Audit log
+    await auditLog(request, "CREATE", "user", {
+      entityId: user.id,
+      metadata: {
+        email: data.email,
+        role: data.role,
+        companyId: data.companyId,
+        invitedBy: session.user.id,
+      },
+    });
+
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -236,9 +248,32 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const data = updateUserSchema.parse(body);
 
+    // Get user before update for audit log
+    const userBefore = await getUserById(userId);
+
+    if (!userBefore) {
+      return NextResponse.json(
+        { error: "Benutzer nicht gefunden" },
+        { status: 404 }
+      );
+    }
+
     // Users can update their own name
     if (userId === session.user.id) {
       const user = await updateUser(userId, { name: data.name });
+
+      // Audit log
+      await auditLog(request, "UPDATE", "user", {
+        entityId: userId,
+        changes: {
+          before: { name: userBefore.name },
+          after: { name: user.name },
+        },
+        metadata: {
+          selfUpdate: true,
+        },
+      });
+
       return NextResponse.json({ user });
     }
 
@@ -263,6 +298,28 @@ export async function PATCH(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Audit log
+    await auditLog(request, "UPDATE", "user", {
+      entityId: userId,
+      changes: {
+        before: {
+          name: userBefore.name,
+          role: userBefore.role,
+          status: userBefore.status,
+          companyId: userBefore.companyId,
+        },
+        after: {
+          name: user.name,
+          role: user.role,
+          status: user.status,
+          companyId: user.companyId,
+        },
+      },
+      metadata: {
+        updatedBy: session.user.id,
+      },
+    });
 
     return NextResponse.json({ user });
   } catch (error) {

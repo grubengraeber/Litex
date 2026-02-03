@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { authCodes, users, sessions } from "@/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
+import { auditAuth } from "@/lib/audit/audit-middleware";
 
 const verifyCodeSchema = z.object({
   email: z.string().email(),
@@ -66,19 +67,31 @@ export async function POST(request: NextRequest) {
     });
 
     if (!authCode) {
+      // Audit failed login attempt
+      await auditAuth(request, "LOGIN_FAILED", email, {
+        status: "failed",
+        errorMessage: "Invalid or expired code",
+        metadata: { attempts: 1 },
+      });
+
       // Increment attempts on any matching code
       const anyCode = await db.query.authCodes.findFirst({
         where: eq(authCodes.email, email),
       });
-      
+
       if (anyCode) {
         await db.update(authCodes)
           .set({ attempts: (anyCode.attempts || 0) + 1 })
           .where(eq(authCodes.id, anyCode.id));
-        
+
         // Lock after 5 attempts
         if ((anyCode.attempts || 0) >= 4) {
           await db.delete(authCodes).where(eq(authCodes.email, email));
+          await auditAuth(request, "LOGIN_FAILED", email, {
+            status: "error",
+            errorMessage: "Account locked due to too many attempts",
+            metadata: { attempts: (anyCode.attempts || 0) + 1 },
+          });
           return NextResponse.json(
             { error: "Zu viele Versuche. Bitte fordere einen neuen Code an." },
             { status: 429 }
@@ -109,6 +122,10 @@ export async function POST(request: NextRequest) {
 
     // Check if user is disabled
     if (user.status === "disabled") {
+      await auditAuth(request, "LOGIN_FAILED", email, {
+        status: "failed",
+        errorMessage: "Account is disabled",
+      });
       return NextResponse.json(
         { error: "Dein Konto wurde deaktiviert" },
         { status: 403 }
@@ -123,6 +140,15 @@ export async function POST(request: NextRequest) {
       sessionToken,
       userId: user.id,
       expires,
+    });
+
+    // Audit successful login
+    await auditAuth(request, "LOGIN", email, {
+      metadata: {
+        userId: user.id,
+        role: user.role,
+        status: user.status,
+      },
     });
 
     // Set session cookie

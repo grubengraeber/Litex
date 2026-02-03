@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getTasksForUser, createTask } from "@/db/queries";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 const createTaskSchema = z.object({
   companyId: z.string().uuid(),
@@ -94,6 +95,16 @@ export async function POST(request: NextRequest) {
     const data = createTaskSchema.parse(body);
 
     const task = await createTask(data);
+
+    // Audit log
+    await auditLog(request, "CREATE", "task", {
+      entityId: task.id,
+      metadata: {
+        companyId: task.companyId,
+        bookingText: task.bookingText,
+        period: task.period,
+      },
+    });
 
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { userRoles, roles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 interface RouteParams {
   id: string;
@@ -107,6 +108,17 @@ export const POST = withPermission<RouteParams>(
         })
         .returning();
 
+      // Audit log
+      await auditLog(req, "CREATE", "role", {
+        entityId: roleId,
+        metadata: {
+          action: "ASSIGN_ROLE",
+          userId,
+          roleName: role.name,
+          assignedBy: currentUserId,
+        },
+      });
+
       return NextResponse.json(newUserRole, { status: 201 });
     } catch (error) {
       console.error("Error assigning role to user:", error);
@@ -137,6 +149,12 @@ export const DELETE = withPermission<RouteParams>(
         );
       }
 
+      // Get role info before deletion for audit log
+      const [role] = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.id, roleId));
+
       // Remove role assignment
       const result = await db
         .delete(userRoles)
@@ -154,6 +172,18 @@ export const DELETE = withPermission<RouteParams>(
           { status: 404 }
         );
       }
+
+      // Audit log
+      const session = await auth();
+      await auditLog(req, "DELETE", "role", {
+        entityId: roleId,
+        metadata: {
+          action: "REMOVE_ROLE",
+          userId,
+          roleName: role?.name,
+          removedBy: session?.user?.id,
+        },
+      });
 
       return NextResponse.json(
         { message: "Role removed successfully" },

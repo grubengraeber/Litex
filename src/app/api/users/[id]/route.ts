@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getUserById, updateUser } from "@/db/queries";
 import { z } from "zod";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 const updateUserSchema = z.object({
   name: z.string().optional(),
@@ -75,10 +76,33 @@ export async function PATCH(
     const body = await request.json();
     const data = updateUserSchema.parse(body);
 
+    // Get user before update for audit log
+    const userBefore = await getUserById(id);
+
+    if (!userBefore) {
+      return NextResponse.json(
+        { error: "Benutzer nicht gefunden" },
+        { status: 404 }
+      );
+    }
+
     // Users can update their own name
     if (id === session.user.id) {
       // Only allow updating name for own profile
       const user = await updateUser(id, { name: data.name });
+
+      // Audit log
+      await auditLog(request, "UPDATE", "user", {
+        entityId: id,
+        changes: {
+          before: { name: userBefore.name },
+          after: { name: user.name },
+        },
+        metadata: {
+          selfUpdate: true,
+        },
+      });
+
       return NextResponse.json({ user });
     }
 
@@ -103,6 +127,28 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    // Audit log
+    await auditLog(request, "UPDATE", "user", {
+      entityId: id,
+      changes: {
+        before: {
+          name: userBefore.name,
+          role: userBefore.role,
+          status: userBefore.status,
+          companyId: userBefore.companyId,
+        },
+        after: {
+          name: user.name,
+          role: user.role,
+          status: user.status,
+          companyId: user.companyId,
+        },
+      },
+      metadata: {
+        updatedBy: session.user.id,
+      },
+    });
 
     return NextResponse.json({ user });
   } catch (error) {
@@ -156,12 +202,33 @@ export async function DELETE(
       );
     }
 
+    // Get user info before deletion for audit log
+    const user = await getUserById(id);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Benutzer nicht gefunden" },
+        { status: 404 }
+      );
+    }
+
     // Delete user (cascade will delete related records)
     const { db } = await import("@/db");
     const { users } = await import("@/db/schema");
     const { eq } = await import("drizzle-orm");
 
     await db.delete(users).where(eq(users.id, id));
+
+    // Audit log
+    await auditLog(request, "DELETE", "user", {
+      entityId: id,
+      metadata: {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        deletedBy: session.user.id,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

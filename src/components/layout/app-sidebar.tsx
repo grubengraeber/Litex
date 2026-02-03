@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   UserCog,
   FolderOpen,
+  History,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
 
@@ -60,6 +61,7 @@ const employeeAdministration = [
   { name: "Benutzer", href: "/users", icon: UserCog },
   { name: "Rollen", href: "/roles", icon: Shield },
   { name: "Berechtigungen", href: "/permissions", icon: ShieldCheck },
+  { name: "Audit Logs", href: "/audit-logs", icon: History },
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 

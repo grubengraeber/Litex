@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { files } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { userHasPermission, PERMISSIONS } from "@/lib/permissions";
+import { auditLog } from "@/lib/audit/audit-middleware";
 
 // POST /api/files/[id]/approve - Approve a file
 export async function POST(
@@ -49,6 +50,15 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    // Audit log
+    await auditLog(request, "APPROVE", "file", {
+      entityId: id,
+      metadata: {
+        fileName: updated.fileName,
+        taskId: updated.taskId,
+      },
+    });
 
     return NextResponse.json({ file: updated });
   } catch (error) {
