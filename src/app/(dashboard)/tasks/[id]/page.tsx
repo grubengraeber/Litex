@@ -109,9 +109,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         const taskData = await fetchTaskDetails(id);
         setTask(taskData as unknown as Task);
 
-        // Get current user ID from first comment if available
+        // Get current user ID from session
         const session = await fetch("/api/auth/session").then(r => r.json());
-        setCurrentUserId(session?.user?.id || "");
+        const userId = session?.user?.id || "";
+        setCurrentUserId(userId);
       } catch (error) {
         console.error("Failed to fetch task:", error);
         toast({
@@ -127,11 +128,21 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     loadTask();
   }, [id, toast]);
 
-  // Fetch comments
+  // Fetch comments with controlled polling
   useEffect(() => {
+    let isMounted = true;
+    let isLoading = false;
+    let intervalId: NodeJS.Timeout | null = null;
+
     const loadComments = async () => {
+      // Prevent overlapping requests
+      if (isLoading || !isMounted) return;
+
+      isLoading = true;
       try {
         const commentsData = await fetchTaskComments(id);
+
+        if (!isMounted) return;
 
         // Transform to ChatMessage format
         const chatMessages: ChatMessage[] = commentsData.map((comment) => {
@@ -159,16 +170,30 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         setComments(chatMessages);
       } catch (error) {
         console.error("Failed to fetch comments:", error);
+      } finally {
+        isLoading = false;
       }
     };
 
     if (currentUserId) {
+      // Initial load
       loadComments();
 
-      // Poll for new comments every 10 seconds
-      const interval = setInterval(loadComments, 10000);
-      return () => clearInterval(interval);
+      // Poll for new comments every 30 seconds (reduced from 10 seconds)
+      intervalId = setInterval(() => {
+        if (isMounted && !isLoading) {
+          loadComments();
+        }
+      }, 30000);
     }
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [id, currentUserId]);
 
   // Handle sending messages
