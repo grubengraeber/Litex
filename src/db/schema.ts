@@ -6,6 +6,15 @@ export const roleEnum = pgEnum("role", ["customer", "employee"]);
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "disabled"]);
 export const taskStatusEnum = pgEnum("task_status", ["open", "submitted", "completed"]);
 export const trafficLightEnum = pgEnum("traffic_light", ["green", "yellow", "red"]);
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "new_message",
+  "task_submitted",
+  "task_completed",
+  "task_returned",
+  "file_uploaded",
+  "file_approved",
+  "file_rejected"
+]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -135,4 +144,52 @@ export const commentsRelations = relations(comments, ({ one }) => ({
 export const filesRelations = relations(files, ({ one }) => ({
   task: one(tasks, { fields: [files.taskId], references: [tasks.id] }),
   user: one(users, { fields: [files.uploadedBy], references: [users.id] }),
+}));
+
+// Chat Messages - "Next Level" with read receipts
+export const messages = pgTable("messages", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  senderId: text("sender_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+// Message Read Receipts - like WhatsApp ✓✓
+export const messageReads = pgTable("message_reads", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  messageId: uuid("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id),
+  readAt: timestamp("read_at", { mode: "date" }).defaultNow(),
+});
+
+// Notifications - Bell icon with unread count
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message"),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  messageId: uuid("message_id").references(() => messages.id, { onDelete: "cascade" }),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+// Message Relations
+export const messagesRelations = relations(messages, ({ one, many }) => ({
+  task: one(tasks, { fields: [messages.taskId], references: [tasks.id] }),
+  sender: one(users, { fields: [messages.senderId], references: [users.id] }),
+  reads: many(messageReads),
+}));
+
+export const messageReadsRelations = relations(messageReads, ({ one }) => ({
+  message: one(messages, { fields: [messageReads.messageId], references: [messages.id] }),
+  user: one(users, { fields: [messageReads.userId], references: [users.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+  task: one(tasks, { fields: [notifications.taskId], references: [tasks.id] }),
+  sourceMessage: one(messages, { fields: [notifications.messageId], references: [messages.id] }),
 }));
