@@ -20,10 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, FileDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, FileDown, ChevronLeft, ChevronRight, ShieldAlert } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
+import { useRole } from "@/hooks/use-role";
 
 interface AuditLog {
   id: string;
@@ -42,6 +43,7 @@ interface AuditLog {
 }
 
 export default function AuditLogsPage() {
+  const { permissions } = useRole();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,9 +55,11 @@ export default function AuditLogsPage() {
   const pageSize = 50;
 
   useEffect(() => {
-    fetchLogs();
+    if (permissions.canViewAuditLogs) {
+      fetchLogs();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, actionFilter, entityFilter, statusFilter]);
+  }, [page, actionFilter, entityFilter, statusFilter, permissions.canViewAuditLogs]);
 
   async function fetchLogs() {
     setLoading(true);
@@ -140,6 +144,25 @@ export default function AuditLogsPage() {
     failed: "bg-yellow-100 text-yellow-800",
     error: "bg-red-100 text-red-800",
   };
+
+  // Check permission
+  if (!permissions.canViewAuditLogs) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <ShieldAlert className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">
+              Keine Berechtigung
+            </h2>
+            <p className="text-slate-500">
+              Du hast keine Berechtigung, um Audit Logs anzuzeigen. Diese Funktion ist nur für Administratoren verfügbar.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading && logs.length === 0) {
     return (

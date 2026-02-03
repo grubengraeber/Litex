@@ -102,6 +102,7 @@ export const ROLE_PERMISSIONS = {
     canInviteUsers: false,      // Kann keine Benutzer einladen
     canUploadFiles: true,       // Kann Belege hochladen
     canComment: true,           // Kann kommentieren
+    canViewAuditLogs: false,    // Kann Audit Logs nicht sehen
   },
   employee: {
     canSeeAllTasks: true,       // Alle Aufgaben
@@ -113,6 +114,7 @@ export const ROLE_PERMISSIONS = {
     canInviteUsers: true,       // Kann Benutzer einladen
     canUploadFiles: true,       // Kann Belege hochladen
     canComment: true,           // Kann kommentieren
+    canViewAuditLogs: true,     // Kann Audit Logs sehen
   },
 } as const;
 

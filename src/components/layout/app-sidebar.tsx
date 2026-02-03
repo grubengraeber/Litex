@@ -56,12 +56,12 @@ const customerNavigation = [
 ];
 
 // Administration section - shown at the bottom
-const employeeAdministration = [
+// Note: Audit Logs will be conditionally added based on permissions
+const employeeAdministrationBase = [
   { name: "Team", href: "/team", icon: Users },
   { name: "Benutzer", href: "/users", icon: UserCog },
   { name: "Rollen", href: "/roles", icon: Shield },
   { name: "Berechtigungen", href: "/permissions", icon: ShieldCheck },
-  { name: "Audit Logs", href: "/audit-logs", icon: History },
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
@@ -86,6 +86,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isEmployee, permissions } = useRole();
 
   const navigation = isEmployee ? employeeNavigation : customerNavigation;
+
+  // Build administration menu with conditional Audit Logs link
+  const employeeAdministration = React.useMemo(() => {
+    const items = [...employeeAdministrationBase];
+    // Insert Audit Logs before Settings if user has permission
+    if (permissions.canViewAuditLogs) {
+      items.splice(items.length - 1, 0, {
+        name: "Audit Logs",
+        href: "/audit-logs",
+        icon: History
+      });
+    }
+    return items;
+  }, [permissions.canViewAuditLogs]);
+
   const administration = isEmployee ? employeeAdministration : customerAdministration;
 
   const getFilterHref = (filter: string) => {
