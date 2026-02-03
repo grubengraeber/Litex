@@ -1,0 +1,357 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, ShieldCheck, UserCog, X } from "lucide-react";
+import { toast } from "sonner";
+
+interface Role {
+  id: string;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+}
+
+interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  status: "pending" | "active" | "disabled";
+  role: "customer" | "employee";
+  companyId: string | null;
+  createdAt: string;
+  roles: Role[];
+}
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState("");
+
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+  }, []);
+
+  async function fetchUsers() {
+    try {
+      const response = await fetch("/api/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Fehler beim Laden der Benutzer");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchRoles() {
+    try {
+      const response = await fetch("/api/roles");
+      if (response.ok) {
+        const data = await response.json();
+        setAllRoles(data);
+      }
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+    }
+  }
+
+  function openRoleDialog(user: User) {
+    setSelectedUser(user);
+    setSelectedRoleId("");
+    setDialogOpen(true);
+  }
+
+  async function handleAssignRole() {
+    if (!selectedUser || !selectedRoleId) return;
+
+    try {
+      const response = await fetch(`/api/users/${selectedUser.id}/roles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: selectedRoleId }),
+      });
+
+      if (response.ok) {
+        toast.success("Rolle zugewiesen");
+        setDialogOpen(false);
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Fehler beim Zuweisen");
+      }
+    } catch (error) {
+      console.error("Error assigning role:", error);
+      toast.error("Fehler beim Zuweisen");
+    }
+  }
+
+  async function handleRemoveRole(userId: string, roleId: string) {
+    try {
+      const response = await fetch(
+        `/api/users/${userId}/roles?roleId=${roleId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        toast.success("Rolle entfernt");
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Fehler beim Entfernen");
+      }
+    } catch (error) {
+      console.error("Error removing role:", error);
+      toast.error("Fehler beim Entfernen");
+    }
+  }
+
+  const filteredUsers = users.filter((user) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      user.name?.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.roles.some((role) => role.name.toLowerCase().includes(query))
+    );
+  });
+
+  const getInitials = (name: string | null, email: string) => {
+    if (name) {
+      return name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return email.slice(0, 2).toUpperCase();
+  };
+
+  const statusConfig = {
+    active: { label: "Aktiv", variant: "default" as const },
+    pending: { label: "Ausstehend", variant: "secondary" as const },
+    disabled: { label: "Deaktiviert", variant: "destructive" as const },
+  };
+
+  const roleTypeConfig = {
+    employee: { label: "Mitarbeiter", variant: "default" as const },
+    customer: { label: "Kunde", variant: "secondary" as const },
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-slate-500">Laden...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Benutzer-Verwaltung</h1>
+          <p className="text-slate-500 mt-1">{users.length} Benutzer</p>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Input
+          type="search"
+          placeholder="Benutzer durchsuchen..."
+          className="pl-10"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Alle Benutzer</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Benutzer</TableHead>
+                <TableHead>Typ</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Zugewiesene Rollen</TableHead>
+                <TableHead className="w-32">Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((user) => {
+                const statusBadge = statusConfig[user.status];
+                const roleTypeBadge = roleTypeConfig[user.role];
+                const initials = getInitials(user.name, user.email);
+
+                return (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={user.image || undefined} />
+                          <AvatarFallback className="bg-blue-100 text-blue-600">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">
+                            {user.name || user.email.split("@")[0]}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {user.email}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={roleTypeBadge.variant}>
+                        {roleTypeBadge.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusBadge.variant}>
+                        {statusBadge.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {user.roles.map((role) => (
+                          <div key={role.id} className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-xs">
+                              {role.name}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-4 w-4 hover:bg-red-100"
+                              onClick={() => handleRemoveRole(user.id, role.id)}
+                            >
+                              <X className="h-3 w-3 text-red-600" />
+                            </Button>
+                          </div>
+                        ))}
+                        {user.roles.length === 0 && (
+                          <span className="text-sm text-slate-400">
+                            Keine Rollen
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openRoleDialog(user)}
+                        className="gap-2"
+                      >
+                        <UserCog className="w-4 h-4" />
+                        Rolle zuweisen
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Assign Role Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rolle zuweisen</DialogTitle>
+            <DialogDescription>
+              Weisen Sie {selectedUser?.name || selectedUser?.email} eine neue
+              Rolle zu.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">Rolle auswählen</Label>
+              <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Rolle wählen..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allRoles
+                    .filter(
+                      (role) =>
+                        !selectedUser?.roles.some((ur) => ur.id === role.id)
+                    )
+                    .map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4" />
+                          {role.name}
+                          {role.description && (
+                            <span className="text-slate-500 text-sm">
+                              - {role.description}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleAssignRole} disabled={!selectedRoleId}>
+              Zuweisen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

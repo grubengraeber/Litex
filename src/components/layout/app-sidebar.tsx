@@ -17,6 +17,9 @@ import {
   Building2,
   UserPlus,
   MessageSquare,
+  Shield,
+  ShieldCheck,
+  UserCog,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
 
@@ -51,6 +54,9 @@ const customerNavigation = [
 // Administration section - shown at the bottom
 const employeeAdministration = [
   { name: "Team", href: "/team", icon: Users },
+  { name: "Benutzer", href: "/users", icon: UserCog },
+  { name: "Rollen", href: "/roles", icon: Shield },
+  { name: "Berechtigungen", href: "/permissions", icon: ShieldCheck },
   { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
