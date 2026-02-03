@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ViewToggle } from "@/components/tasks/view-toggle";
+import { PermissionsDataTable } from "@/components/permissions/permissions-data-table";
 import {
   Table,
   TableBody,
@@ -32,6 +34,20 @@ export default function PermissionsPage() {
   const [categorized, setCategorized] = useState<CategorizedPermissions>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<"grid" | "table">("grid");
+
+  // Load view preference
+  useEffect(() => {
+    const savedView = localStorage.getItem("permissions-view");
+    if (savedView === "grid" || savedView === "table") {
+      setView(savedView);
+    }
+  }, []);
+
+  const handleViewChange = (newView: "grid" | "table") => {
+    setView(newView);
+    localStorage.setItem("permissions-view", newView);
+  };
 
   useEffect(() => {
     fetchPermissions();
@@ -97,9 +113,10 @@ export default function PermissionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Berechtigungen</h1>
           <p className="text-slate-500 mt-1">
-            {permissions.length} Berechtigungen definiert
+            {filteredPermissions.length} {filteredPermissions.length === 1 ? "Berechtigung" : "Berechtigungen"}
           </p>
         </div>
+        <ViewToggle view={view} onViewChange={handleViewChange} />
       </div>
 
       {/* Search */}
@@ -114,126 +131,100 @@ export default function PermissionsPage() {
         />
       </div>
 
-      {/* Permissions by Category */}
-      <div className="space-y-6">
-        {Object.entries(categorized).map(([category, perms]) => {
-          const filteredCategoryPerms = perms.filter((p) =>
-            filteredPermissions.some((fp) => fp.id === p.id)
-          );
+      {/* Permissions Content */}
+      {filteredPermissions.length > 0 ? (
+        view === "grid" ? (
+          /* Permissions by Category - Grid View */
+          <div className="space-y-6">
+            {Object.entries(categorized).map(([category, perms]) => {
+              const filteredCategoryPerms = perms.filter((p) =>
+                filteredPermissions.some((fp) => fp.id === p.id)
+              );
 
-          if (filteredCategoryPerms.length === 0) return null;
+              if (filteredCategoryPerms.length === 0) return null;
 
-          return (
-            <Card key={category}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  {categoryLabels[category] || category}
-                  <Badge variant="secondary" className="ml-2">
-                    {filteredCategoryPerms.length}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Berechtigung</TableHead>
-                      <TableHead>Beschreibung</TableHead>
-                      <TableHead>Rollen mit dieser Berechtigung</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCategoryPerms.map((perm) => (
-                      <TableRow key={perm.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              className={categoryColors[category] || ""}
-                              variant="outline"
-                            >
-                              {perm.name}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {perm.description || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {perm.roles.length > 0 ? (
-                              perm.roles.map((role) => (
-                                <Badge
-                                  key={role.id}
-                                  variant="default"
-                                  className="text-xs"
-                                >
-                                  {role.name}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-sm text-slate-400">
-                                Keiner Rolle zugewiesen
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* All Permissions View (if searching) */}
-      {searchQuery && filteredPermissions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Suchergebnisse</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Kategorie</TableHead>
-                  <TableHead>Berechtigung</TableHead>
-                  <TableHead>Beschreibung</TableHead>
-                  <TableHead>Rollen</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPermissions.map((perm) => (
-                  <TableRow key={perm.id}>
-                    <TableCell>
-                      <Badge
-                        className={categoryColors[perm.category] || ""}
-                        variant="outline"
-                      >
-                        {categoryLabels[perm.category] || perm.category}
+              return (
+                <Card key={category}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5" />
+                      {categoryLabels[category] || category}
+                      <Badge variant="secondary" className="ml-2">
+                        {filteredCategoryPerms.length}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{perm.name}</TableCell>
-                    <TableCell className="text-slate-600">
-                      {perm.description || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {perm.roles.map((role) => (
-                          <Badge key={role.id} variant="default" className="text-xs">
-                            {role.name}
-                          </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Berechtigung</TableHead>
+                          <TableHead>Beschreibung</TableHead>
+                          <TableHead>Rollen mit dieser Berechtigung</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCategoryPerms.map((perm) => (
+                          <TableRow key={perm.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  className={categoryColors[category] || ""}
+                                  variant="outline"
+                                >
+                                  {perm.name}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {perm.description || "-"}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {perm.roles.length > 0 ? (
+                                  perm.roles.map((role) => (
+                                    <Badge
+                                      key={role.id}
+                                      variant="default"
+                                      className="text-xs"
+                                    >
+                                      {role.name}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-sm text-slate-400">
+                                    Keiner Rolle zugewiesen
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          /* All Permissions - Table View */
+          <PermissionsDataTable permissions={filteredPermissions} />
+        )
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <span className="text-2xl">🔒</span>
+          </div>
+          <h3 className="text-lg font-medium text-slate-700">
+            Keine Berechtigungen gefunden
+          </h3>
+          <p className="text-slate-500 mt-1">
+            {searchQuery
+              ? "Versuchen Sie einen anderen Suchbegriff."
+              : "Es wurden noch keine Berechtigungen definiert."}
+          </p>
+        </div>
       )}
     </div>
   );
