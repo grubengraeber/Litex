@@ -6,6 +6,7 @@ export const roleEnum = pgEnum("role", ["customer", "employee"]);
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "disabled"]);
 export const taskStatusEnum = pgEnum("task_status", ["open", "submitted", "completed"]);
 export const trafficLightEnum = pgEnum("traffic_light", ["green", "yellow", "red"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_comment", "task_assigned", "deadline_warning", "file_uploaded"]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -109,11 +110,34 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+// Comment Read Status - tracks who has read which comment
+export const commentReadStatus = pgTable("comment_read_status", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at", { mode: "date" }).defaultNow(),
+});
+
+// Notifications
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, { fields: [users.companyId], references: [companies.id] }),
   comments: many(comments),
   files: many(files),
+  notifications: many(notifications),
+  commentReadStatuses: many(commentReadStatus),
 }));
 
 export const companiesRelations = relations(companies, ({ many }) => ({
@@ -125,14 +149,28 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   company: one(companies, { fields: [tasks.companyId], references: [companies.id] }),
   files: many(files),
   comments: many(comments),
+  notifications: many(notifications),
 }));
 
-export const commentsRelations = relations(comments, ({ one }) => ({
+export const commentsRelations = relations(comments, ({ one, many }) => ({
   task: one(tasks, { fields: [comments.taskId], references: [tasks.id] }),
   user: one(users, { fields: [comments.userId], references: [users.id] }),
+  readStatuses: many(commentReadStatus),
+  notifications: many(notifications),
 }));
 
 export const filesRelations = relations(files, ({ one }) => ({
   task: one(tasks, { fields: [files.taskId], references: [tasks.id] }),
   user: one(users, { fields: [files.uploadedBy], references: [users.id] }),
+}));
+
+export const commentReadStatusRelations = relations(commentReadStatus, ({ one }) => ({
+  comment: one(comments, { fields: [commentReadStatus.commentId], references: [comments.id] }),
+  user: one(users, { fields: [commentReadStatus.userId], references: [users.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+  task: one(tasks, { fields: [notifications.taskId], references: [tasks.id] }),
+  comment: one(comments, { fields: [notifications.commentId], references: [comments.id] }),
 }));

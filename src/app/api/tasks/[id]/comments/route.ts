@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getTaskById, getCommentsForTask, createComment, deleteComment } from "@/db/queries";
+import { notifyNewComment } from "@/lib/notifications";
 import { z } from "zod";
 
 const createCommentSchema = z.object({
@@ -94,6 +95,11 @@ export async function POST(
       taskId: id,
       userId: session.user.id,
       content,
+    });
+
+    // Trigger notification for new comment (async, don't wait)
+    notifyNewComment(id, session.user.id, content).catch(err => {
+      console.error("Error sending notifications:", err);
     });
 
     return NextResponse.json({ comment }, { status: 201 });
