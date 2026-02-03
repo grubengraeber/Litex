@@ -126,7 +126,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
     };
 
     loadTask();
-  }, [id, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Fetch comments with controlled polling
   useEffect(() => {
