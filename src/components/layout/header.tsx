@@ -4,17 +4,16 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Search, ChevronDown, ChevronLeft, ChevronRight, Calendar, LogOut, ExternalLink } from "lucide-react";
-import Cookies from "js-cookie";
+import { Search, ChevronDown, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { NotificationsDropdown } from "./notifications-dropdown";
+import { UserMenu } from "./user-menu";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -33,18 +32,6 @@ export function Header({ onMonthChange }: HeaderProps) {
 
   // Monatsauswahl nur auf Dashboard und Aufgaben zeigen
   const showMonthFilter = pathname === "/dashboard" || pathname.startsWith("/tasks");
-
-  const handleLogout = () => {
-    // Clear session cookies
-    const cookieName = process.env.NODE_ENV === "production"
-      ? "__Secure-next-auth.session-token"
-      : "next-auth.session-token";
-
-    Cookies.remove(cookieName);
-
-    // Redirect to login page
-    router.push("/login");
-  };
 
   const handleMonthClick = (monthKey: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -146,49 +133,11 @@ export function Header({ onMonthChange }: HeaderProps) {
           />
         </div>
 
+        {/* Notifications Bell */}
+        <NotificationsDropdown />
+
         {/* User Avatar Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-              <Avatar className="w-8 h-8 cursor-pointer">
-                <AvatarImage src="/avatar.jpg" alt="Benutzer" />
-                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">FT</AvatarFallback>
-              </Avatar>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem asChild>
-              <a
-                href="https://app.finmatics.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center cursor-pointer"
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Finmatics
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a
-                href="https://www.bmd.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center cursor-pointer"
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                BMD
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-red-600 focus:text-red-600 cursor-pointer"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Abmelden
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserMenu />
       </div>
     </div>
   );
