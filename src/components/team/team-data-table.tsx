@@ -6,29 +6,30 @@ import { ColumnHeader } from "@/components/ui/column-filter";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserCog, MoreVertical } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface Role {
   id: string;
   name: string;
   description: string | null;
-  isSystem: boolean;
 }
 
-interface User {
+interface TeamMember {
   id: string;
   name: string | null;
   email: string;
   image: string | null;
   status: "pending" | "active" | "disabled";
-  role: "customer" | "employee";
   companyId: string | null;
+  companyName: string | null;
   createdAt: string;
   roles: Role[];
 }
@@ -39,69 +40,43 @@ const statusConfig = {
   disabled: { label: "Deaktiviert", variant: "destructive" as const },
 };
 
-const roleConfig = {
-  employee: { label: "Mitarbeiter", variant: "default" as const },
-  customer: { label: "Kunde", variant: "secondary" as const },
-};
-
-export function UsersDataTable({
-  users,
-  onAssignRole,
+export function TeamDataTable({
+  members,
+  onEdit,
   onToggleStatus,
-  onDelete,
 }: {
-  users: User[];
-  onAssignRole: (user: User) => void;
-  onToggleStatus: (user: User) => void;
-  onDelete: (user: User) => void;
+  members: TeamMember[];
+  onEdit?: (member: TeamMember) => void;
+  onToggleStatus?: (member: TeamMember) => void;
 }) {
-  const columns: ColumnDef<User>[] = [
+  const columns: ColumnDef<TeamMember>[] = [
     {
       accessorKey: "name",
       header: ({ column }) => (
-        <ColumnHeader column={column} title="Benutzer" filterType="text" />
+        <ColumnHeader column={column} title="Mitglied" filterType="text" />
       ),
       cell: ({ row }) => {
-        const user = row.original;
-        const initials = user.name
-          ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-          : user.email.slice(0, 2).toUpperCase();
+        const member = row.original;
+        const initials = member.name
+          ? member.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+          : member.email.slice(0, 2).toUpperCase();
 
         return (
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={user.image || undefined} />
+              <AvatarImage src={member.image || undefined} />
               <AvatarFallback className="bg-blue-100 text-blue-600">
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div>
               <div className="font-medium">
-                {user.name || user.email.split("@")[0]}
+                {member.name || member.email.split("@")[0]}
               </div>
-              <div className="text-sm text-slate-500">{user.email}</div>
+              <div className="text-sm text-slate-500">{member.email}</div>
             </div>
           </div>
         );
-      },
-    },
-    {
-      accessorKey: "role",
-      header: ({ column }) => (
-        <ColumnHeader
-          column={column}
-          title="Typ"
-          filterType="select"
-          filterOptions={[
-            { label: "Mitarbeiter", value: "employee" },
-            { label: "Kunde", value: "customer" },
-          ]}
-        />
-      ),
-      cell: ({ row }) => {
-        const role = row.getValue("role") as keyof typeof roleConfig;
-        const config = roleConfig[role];
-        return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
     {
@@ -125,8 +100,18 @@ export function UsersDataTable({
       },
     },
     {
+      id: "company",
+      accessorFn: (row) => row.companyName || "Kanzlei",
+      header: ({ column }) => (
+        <ColumnHeader column={column} title="Zugehörigkeit" filterType="text" />
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm">{row.original.companyName || "Kanzlei"}</div>
+      ),
+    },
+    {
       id: "roles",
-      header: "Zugewiesene Rollen",
+      header: "Rollen",
       cell: ({ row }) => {
         const roles = row.original.roles;
         return (
@@ -145,43 +130,51 @@ export function UsersDataTable({
       },
     },
     {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <ColumnHeader column={column} title="Seit" filterType="none" />
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue("createdAt") as string;
+        return (
+          <div className="text-sm text-slate-600">
+            {formatDistanceToNow(new Date(date), {
+              addSuffix: true,
+              locale: de,
+            })}
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "Aktionen",
       cell: ({ row }) => {
-        const user = row.original;
+        const member = row.original;
         return (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onAssignRole(user)}
-            >
-              <UserCog className="w-4 h-4 mr-1" />
-              Rolle
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onToggleStatus(user)}>
-                  {user.status === "active" ? "Deaktivieren" : "Aktivieren"}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(member)}>
+                  Bearbeiten
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDelete(user)}
-                  className="text-red-600"
-                >
-                  Löschen
+              )}
+              {onToggleStatus && (
+                <DropdownMenuItem onClick={() => onToggleStatus(member)}>
+                  {member.status === "active" ? "Deaktivieren" : "Aktivieren"}
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
   ];
 
-  return <DataTable columns={columns} data={users} pageSize={20} />;
+  return <DataTable columns={columns} data={members} pageSize={20} />;
 }

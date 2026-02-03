@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ViewToggle } from "@/components/tasks/view-toggle";
+import { TeamDataTable } from "@/components/team/team-data-table";
 import { useRole } from "@/hooks/use-role";
 import {
   Plus,
@@ -47,6 +49,20 @@ function TeamContent() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState<"grid" | "table">("grid");
+
+  // Load view preference
+  useEffect(() => {
+    const savedView = localStorage.getItem("team-view");
+    if (savedView === "grid" || savedView === "table") {
+      setView(savedView);
+    }
+  }, []);
+
+  const handleViewChange = (newView: "grid" | "table") => {
+    setView(newView);
+    localStorage.setItem("team-view", newView);
+  };
 
   useEffect(() => {
     async function fetchTeam() {
@@ -102,15 +118,18 @@ function TeamContent() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Team</h1>
           <p className="text-slate-500 mt-1">
-            {filteredMembers.length} Teammitglieder
+            {filteredMembers.length} {filteredMembers.length === 1 ? "Teammitglied" : "Teammitglieder"}
           </p>
         </div>
-        {isEmployee && (
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Mitarbeiter einladen
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          <ViewToggle view={view} onViewChange={handleViewChange} />
+          {isEmployee && (
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Mitarbeiter einladen
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -125,14 +144,22 @@ function TeamContent() {
         />
       </div>
 
-      {/* Team Grid */}
+      {/* Team Content */}
       {filteredMembers.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
-          {searchQuery
-            ? "Keine Teammitglieder gefunden"
-            : "Keine Teammitglieder vorhanden"}
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+            <span className="text-2xl">👥</span>
+          </div>
+          <h3 className="text-lg font-medium text-slate-700">
+            Keine Teammitglieder gefunden
+          </h3>
+          <p className="text-slate-500 mt-1">
+            {searchQuery
+              ? "Versuchen Sie einen anderen Suchbegriff."
+              : "Es wurden noch keine Teammitglieder angelegt."}
+          </p>
         </div>
-      ) : (
+      ) : view === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMembers.map((member) => {
             const status = statusConfig[member.status];
@@ -204,6 +231,8 @@ function TeamContent() {
             );
           })}
         </div>
+      ) : (
+        <TeamDataTable members={filteredMembers} />
       )}
     </div>
   );

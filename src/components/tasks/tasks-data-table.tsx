@@ -56,7 +56,7 @@ export function TasksDataTable({
       header: ({ column }) => (
         <ColumnHeader
           column={column}
-          title="Status"
+          title="Ampel"
           filterType="select"
           filterOptions={[
             { label: "Neu (0-30 Tage)", value: "green" },

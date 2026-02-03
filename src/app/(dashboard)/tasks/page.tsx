@@ -62,7 +62,7 @@ function TasksContent() {
   useEffect(() => {
     if (isEmployee) {
       fetchCompanies().then((data) => {
-        setCompanies([{ id: "all", name: "Alle Mandanten" }, ...data]);
+        setCompanies(data);
       });
     }
   }, [isEmployee]);
@@ -248,7 +248,7 @@ function TasksContent() {
         <CreateTaskDialog
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
-          companies={companies.filter(c => c.id !== "all")}
+          companies={companies}
           onTaskCreated={loadTasks}
         />
       )}
