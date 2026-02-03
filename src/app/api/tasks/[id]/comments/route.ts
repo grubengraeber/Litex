@@ -5,6 +5,7 @@ import { z } from "zod";
 
 const createCommentSchema = z.object({
   content: z.string().min(1).max(5000),
+  fileIds: z.array(z.string().uuid()).optional(), // IDs of files to attach to this comment
 });
 
 // GET /api/tasks/[id]/comments - List comments for a task
@@ -88,13 +89,35 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { content } = createCommentSchema.parse(body);
+    const { content, fileIds } = createCommentSchema.parse(body);
 
     const comment = await createComment({
       taskId: id,
       userId: session.user.id,
       content,
     });
+
+    if (!comment) {
+      return NextResponse.json(
+        { error: "Fehler beim Erstellen des Kommentars" },
+        { status: 500 }
+      );
+    }
+
+    // If files are provided, attach them to the comment
+    if (fileIds && fileIds.length > 0) {
+      const { db } = await import("@/db");
+      const { files } = await import("@/db/schema");
+      const { inArray } = await import("drizzle-orm");
+
+      // Update files to be attached to this comment
+      await db
+        .update(files)
+        .set({ commentId: comment.id })
+        .where(
+          inArray(files.id, fileIds) // Only attach specified files
+        );
+    }
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (error) {

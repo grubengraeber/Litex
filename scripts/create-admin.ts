@@ -5,7 +5,7 @@ config();
 
 import { db } from "../src/db";
 import { users, roles, userRoles } from "../src/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 async function createAdminUser() {
   console.log("Creating admin user...");
@@ -56,8 +56,12 @@ async function createAdminUser() {
     const existingRoleAssignment = await db
       .select()
       .from(userRoles)
-      .where(eq(userRoles.userId, userId))
-      .where(eq(userRoles.roleId, adminRole.id))
+      .where(
+        and(
+          eq(userRoles.userId, userId),
+          eq(userRoles.roleId, adminRole.id)
+        )
+      )
       .limit(1);
 
     if (existingRoleAssignment.length > 0) {

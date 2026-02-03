@@ -154,7 +154,8 @@ export const tasks = pgTable("tasks", {
 
 export const files = pgTable("files", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  taskId: uuid("task_id").notNull().references(() => tasks.id),
+  commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+  taskId: uuid("task_id").references(() => tasks.id), // Keep for backward compatibility and orphaned files
   uploadedBy: text("uploaded_by").notNull().references(() => users.id),
   fileName: text("file_name").notNull(),
   mimeType: text("mime_type"),
@@ -205,9 +206,11 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   task: one(tasks, { fields: [comments.taskId], references: [tasks.id] }),
   user: one(users, { fields: [comments.userId], references: [users.id] }),
   reads: many(commentReads),
+  files: many(files), // A comment can have multiple file attachments
 }));
 
 export const filesRelations = relations(files, ({ one }) => ({
+  comment: one(comments, { fields: [files.commentId], references: [comments.id] }),
   task: one(tasks, { fields: [files.taskId], references: [tasks.id] }),
   user: one(users, { fields: [files.uploadedBy], references: [users.id] }),
 }));

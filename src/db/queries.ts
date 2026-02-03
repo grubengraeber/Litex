@@ -144,7 +144,10 @@ export async function getCommentsForTask(taskId: string) {
 
   return db.query.comments.findMany({
     where: eq(comments.taskId, taskId),
-    with: { user: true },
+    with: {
+      user: true,
+      files: true, // Include files attached to comments
+    },
     orderBy: [asc(comments.createdAt)],
   });
 }
