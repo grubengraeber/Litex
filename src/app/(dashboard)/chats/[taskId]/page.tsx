@@ -109,7 +109,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
         const response = await fetch(`/api/tasks/${taskId}/comments`);
         if (!response.ok) return;
 
-        const commentsData = await response.json();
+        const { comments: commentsData } = await response.json();
         const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
           const initials = comment.user.name
             ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -150,7 +150,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
 
       // Refresh comments
       const commentsResponse = await fetch(`/api/tasks/${taskId}/comments`);
-      const commentsData = await commentsResponse.json();
+      const { comments: commentsData } = await commentsResponse.json();
 
       const chatMessages: ChatMessage[] = commentsData.map((comment: Comment) => {
         const initials = comment.user.name
