@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { LogOut, Settings, User, ExternalLink } from "lucide-react";
+import { LogOut, Settings, ExternalLink } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -78,20 +78,12 @@ export function UserMenu() {
         <DropdownMenuSeparator />
 
         {/* Navigation Items */}
-        <DropdownMenuItem 
+        <DropdownMenuItem
           className="cursor-pointer"
           onClick={() => router.push("/settings")}
         >
           <Settings className="mr-2 h-4 w-4" />
           Einstellungen
-        </DropdownMenuItem>
-
-        <DropdownMenuItem 
-          className="cursor-pointer"
-          onClick={() => router.push("/profile")}
-        >
-          <User className="mr-2 h-4 w-4" />
-          Profil
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

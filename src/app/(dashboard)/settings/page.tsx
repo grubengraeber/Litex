@@ -1,40 +1,56 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useRole } from "@/hooks/use-role";
-import { 
-  User, 
-  Bell, 
-  Shield, 
+import { useToast } from "@/hooks/use-toast";
+import {
+  User,
+  Bell,
+  Shield,
   Palette,
   Save,
-  Camera
+  Loader2
 } from "lucide-react";
 
-// Mock user data
-const currentUser = {
-  id: "u1",
-  name: "Fabio Trentini",
-  email: "fabio@alb.at",
-  phone: "+43 1 234 5678",
-  role: "employee" as const,
-  initials: "FT",
-  avatar: undefined,
-  company: "ALB Steuerberatung",
-};
+function getInitials(name: string | null | undefined, email: string | null | undefined): string {
+  if (name) {
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return "??";
+}
 
 function SettingsContent() {
+  const { data: session } = useSession();
   const { isEmployee } = useRole();
+  const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    name: currentUser.name,
-    email: currentUser.email,
-    phone: currentUser.phone,
+    name: "",
+    email: "",
   });
+
+  // Initialize form data from session
+  useEffect(() => {
+    if (session?.user) {
+      setFormData({
+        name: session.user.name || "",
+        email: session.user.email || "",
+      });
+    }
+  }, [session]);
   const [notifications, setNotifications] = useState({
     emailTasks: true,
     emailComments: true,
@@ -49,6 +65,52 @@ function SettingsContent() {
   const handleNotificationChange = (key: keyof typeof notifications) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const handleSave = async () => {
+    if (!session?.user?.id) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/users/${session.user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formData.name }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Fehler beim Speichern");
+      }
+
+      toast({
+        title: "Erfolgreich gespeichert",
+        description: "Ihre Einstellungen wurden aktualisiert.",
+      });
+
+      // Update session
+      window.location.reload();
+    } catch {
+      toast({
+        title: "Fehler",
+        description: "Einstellungen konnten nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!session?.user) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  const initials = getInitials(session.user.name, session.user.email);
+  const companyName = session.user.companyId
+    ? (session.user as { company?: { name?: string } }).company?.name
+    : undefined;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -76,18 +138,17 @@ function SettingsContent() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={currentUser.avatar} />
+                <AvatarImage src={session.user.image || undefined} />
                 <AvatarFallback className="text-2xl bg-blue-100 text-blue-600">
-                  {currentUser.initials}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700">
-                <Camera className="w-4 h-4" />
-              </button>
             </div>
             <div>
-              <div className="font-medium">{currentUser.name}</div>
-              <div className="text-sm text-slate-500">{currentUser.company}</div>
+              <div className="font-medium">{session.user.name || "Benutzer"}</div>
+              {companyName && (
+                <div className="text-sm text-slate-500">{companyName}</div>
+              )}
               <Badge variant={isEmployee ? "default" : "outline"} className="mt-1">
                 {isEmployee ? "Mitarbeiter" : "Kunde"}
               </Badge>
@@ -117,24 +178,31 @@ function SettingsContent() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="ihre@email.at"
+                disabled
+                className="bg-slate-50"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Telefon
-              </label>
-              <Input
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="+43 1 234 5678"
-              />
+              <p className="text-xs text-slate-500 mt-1">
+                E-Mail kann nicht geändert werden
+              </p>
             </div>
           </div>
 
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Save className="w-4 h-4 mr-2" />
-            Änderungen speichern
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Wird gespeichert...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Änderungen speichern
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
@@ -227,29 +295,12 @@ function SettingsContent() {
             Sicherheitseinstellungen für Ihr Konto
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-            <div>
-              <div className="font-medium text-sm">Passwort ändern</div>
-              <div className="text-sm text-slate-500">
-                Aktualisieren Sie Ihr Kontopasswort
-              </div>
+        <CardContent>
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <div className="font-medium text-sm">Magic Link Authentifizierung</div>
+            <div className="text-sm text-slate-500 mt-1">
+              Sie melden sich mit einem sicheren 6-stelligen Code an, der an {session.user.email} gesendet wird.
             </div>
-            <Button variant="outline" size="sm">
-              Ändern
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-            <div>
-              <div className="font-medium text-sm">Zwei-Faktor-Authentifizierung</div>
-              <div className="text-sm text-slate-500">
-                Zusätzliche Sicherheit für Ihr Konto
-              </div>
-            </div>
-            <Button variant="outline" size="sm">
-              Einrichten
-            </Button>
           </div>
         </CardContent>
       </Card>
