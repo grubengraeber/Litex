@@ -105,6 +105,25 @@ export const userRoles = pgTable("user_roles", {
   assignedAt: timestamp("assigned_at", { mode: "date" }).defaultNow(),
 });
 
+// Teams - organizational units for employees
+export const teams = pgTable("teams", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  description: text("description"),
+  leaderId: text("leader_id").references((): AnyPgColumn => users.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+});
+
+// Team Members - junction table for users and teams
+export const teamMembers = pgTable("team_members", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  joinedAt: timestamp("joined_at", { mode: "date" }).defaultNow(),
+});
+
 // Business tables
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -167,6 +186,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   comments: many(comments),
   files: many(files),
   userRoles: many(userRoles),
+  teamMemberships: many(teamMembers),
+  ledTeams: many(teams),
 }));
 
 export const companiesRelations = relations(companies, ({ many }) => ({
@@ -243,4 +264,15 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
   user: one(users, { fields: [userRoles.userId], references: [users.id] }),
   role: one(roles, { fields: [userRoles.roleId], references: [roles.id] }),
   assignedByUser: one(users, { fields: [userRoles.assignedBy], references: [users.id] }),
+}));
+
+// Team Relations
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  leader: one(users, { fields: [teams.leaderId], references: [users.id] }),
+  members: many(teamMembers),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  user: one(users, { fields: [teamMembers.userId], references: [users.id] }),
+  team: one(teams, { fields: [teamMembers.teamId], references: [teams.id] }),
 }));
