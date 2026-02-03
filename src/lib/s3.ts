@@ -25,12 +25,16 @@ export interface DownloadUrlResult {
 
 /**
  * Generate a presigned URL for uploading a file
+ * @param taskId - The task ID to associate the file with
+ * @param fileName - Original filename
+ * @param contentType - MIME type of the file
+ * @param expiresIn - URL expiration in seconds (default: 15 minutes for security)
  */
 export async function getUploadUrl(
   taskId: string,
   fileName: string,
   contentType: string,
-  expiresIn: number = 3600
+  expiresIn: number = 900 // 15 minutes - reduced from 1 hour for security
 ): Promise<UploadUrlResult> {
   const timestamp = Date.now();
   const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
@@ -40,6 +44,13 @@ export async function getUploadUrl(
     Bucket: BUCKET,
     Key: storageKey,
     ContentType: contentType,
+    // Security headers
+    ServerSideEncryption: "AES256", // Enable server-side encryption
+    // Metadata for tracking
+    Metadata: {
+      "uploaded-via": "litex-app",
+      "task-id": taskId,
+    },
   });
 
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
@@ -53,18 +64,24 @@ export async function getUploadUrl(
 
 /**
  * Generate a presigned URL for downloading a file
+ * @param storageKey - S3 key of the file
+ * @param fileName - Suggested filename for download
+ * @param expiresIn - URL expiration in seconds (default: 5 minutes for security)
  */
 export async function getDownloadUrl(
   storageKey: string,
   fileName?: string,
-  expiresIn: number = 3600
+  expiresIn: number = 300 // 5 minutes - short-lived for security
 ): Promise<DownloadUrlResult> {
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: storageKey,
-    ResponseContentDisposition: fileName 
-      ? `attachment; filename="${fileName}"` 
+    ResponseContentDisposition: fileName
+      ? `attachment; filename="${fileName}"`
       : undefined,
+    // Security headers
+    ResponseCacheControl: "no-cache, no-store, must-revalidate",
+    ResponseContentType: undefined, // Use the stored content type
   });
 
   const downloadUrl = await getSignedUrl(s3Client, command, { expiresIn });
