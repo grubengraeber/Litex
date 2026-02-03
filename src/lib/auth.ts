@@ -1,9 +1,10 @@
 import NextAuth from "next-auth";
 import EmailProvider from "next-auth/providers/email";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db";
 import { users, authCodes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import nodemailer from "nodemailer";
 import { authConfig } from "./auth.config";
 
@@ -27,6 +28,79 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: db ? DrizzleAdapter(db) : undefined,
   providers: [
+    CredentialsProvider({
+      id: "code",
+      name: "Email Code",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        code: { label: "Code", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!db || !credentials?.email || !credentials?.code) {
+          return null;
+        }
+
+        const email = credentials.email as string;
+        const code = credentials.code as string;
+
+        // Find valid auth code
+        const authCode = await db.query.authCodes.findFirst({
+          where: and(
+            eq(authCodes.email, email),
+            eq(authCodes.code, code),
+            gt(authCodes.expires, new Date())
+          ),
+        });
+
+        if (!authCode) {
+          // Increment attempts
+          const anyCode = await db.query.authCodes.findFirst({
+            where: eq(authCodes.email, email),
+          });
+
+          if (anyCode) {
+            await db.update(authCodes)
+              .set({ attempts: (anyCode.attempts || 0) + 1 })
+              .where(eq(authCodes.id, anyCode.id));
+
+            if ((anyCode.attempts || 0) >= 4) {
+              await db.delete(authCodes).where(eq(authCodes.email, email));
+            }
+          }
+
+          return null;
+        }
+
+        // Delete all auth codes for this email
+        await db.delete(authCodes).where(eq(authCodes.email, email));
+
+        // Find or create user
+        let user = await db.query.users.findFirst({
+          where: eq(users.email, email),
+        });
+
+        if (!user) {
+          const [newUser] = await db.insert(users)
+            .values({ email })
+            .returning();
+          user = newUser;
+        }
+
+        // Check if user is disabled
+        if (user.status === "disabled") {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          companyId: user.companyId,
+          status: user.status,
+        };
+      },
+    }),
     EmailProvider({
       server: {
         host: process.env.SMTP_HOST,
@@ -107,21 +181,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async session({ session, user }) {
-      if (!db) return session;
-      
-      // Fetch user with role and companyId
-      const dbUser = await db.query.users.findFirst({
-        where: eq(users.id, user.id),
-      });
-      
-      if (dbUser) {
-        session.user.id = dbUser.id;
-        session.user.role = dbUser.role;
-        session.user.companyId = dbUser.companyId;
-        session.user.status = dbUser.status;
+    async jwt({ token, user, trigger }) {
+      // Initial sign in - add user info to token
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.role = (user as any).role;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.companyId = (user as any).companyId;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        token.status = (user as any).status;
       }
-      
+
+      // Fetch fresh user data on each request if needed
+      if (trigger === "update" && token.email && db) {
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.email, token.email as string),
+        });
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.companyId = dbUser.companyId;
+          token.status = dbUser.status;
+        }
+      }
+
+      return token;
+    },
+    async session({ session, token }) {
+      // Add user info from token to session
+      if (token) {
+        session.user.id = token.id as string;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        session.user.role = token.role as any;
+        session.user.companyId = token.companyId as string | null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        session.user.status = token.status as any;
+      }
+
       return session;
     },
     async signIn({ user }) {
@@ -140,6 +238,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   session: {
-    strategy: "database",
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 });

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/lib/constants";
@@ -85,7 +84,7 @@ export function Header({ onMonthChange }: HeaderProps) {
                       activeMonthKey === month.key && "bg-blue-50 text-blue-600"
                     )}
                   >
-                    {month.name}
+                    {month.full}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

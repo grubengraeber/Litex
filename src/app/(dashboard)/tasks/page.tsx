@@ -1,147 +1,92 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MONTHS, FILTER_OPTIONS, calculateTrafficLight, type TaskStatus } from "@/lib/constants";
+import {
+  MONTHS,
+  FILTER_OPTIONS,
+  type TaskStatus,
+} from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
-import { Plus, Search, SlidersHorizontal, Building2, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Building2,
+  ChevronDown,
+} from "lucide-react";
+import { fetchTasks, fetchCompanies } from "../actions";
 
-// Mock data with proper dates
-const allTasks = [
-  {
-    id: "1",
-    title: "Kunden-Rechnungen Q1",
-    description: "Erstellung und Versand der Kundenrechnungen für das erste Quartal.",
-    dueDate: "15. Feb",
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days - GREEN
-    status: "open" as TaskStatus,
-    assignee: { name: "Thomas", initials: "TS" },
-    commentCount: 3,
-    fileCount: 2,
-    period: "02",
-    companyId: "c1",
-    companyName: "Mustermann GmbH",
-    amount: "12.450,00",
-  },
-  {
-    id: "2",
-    title: "Kontoauszüge abstimmen",
-    description: "Monatliche Abstimmung der Bankkonten mit den Buchungen.",
-    dueDate: "15. Feb",
-    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000), // 45 days - YELLOW
-    status: "open" as TaskStatus,
-    assignee: { name: "Anna", initials: "AM" },
-    commentCount: 0,
-    fileCount: 0,
-    period: "02",
-    companyId: "c1",
-    companyName: "Mustermann GmbH",
-    amount: "0,00",
-  },
-  {
-    id: "3",
-    title: "Steuerunterlagen vorbereiten",
-    description: "Zusammenstellung aller relevanten Steuerunterlagen für die Abgabe.",
-    dueDate: "15. Feb",
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days - GREEN
-    status: "submitted" as TaskStatus,
-    assignee: { name: "Maria", initials: "MM" },
-    commentCount: 2,
-    fileCount: 1,
-    period: "02",
-    companyId: "c2",
-    companyName: "Beispiel AG",
-    amount: "0,00",
-  },
-  {
-    id: "4",
-    title: "Spesenberichte prüfen",
-    description: "Überprüfung und Genehmigung der eingereichten Spesenberichte.",
-    dueDate: "15. Feb",
-    createdAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000), // 70 days - RED
-    status: "open" as TaskStatus,
-    assignee: { name: "Thomas", initials: "TS" },
-    commentCount: 0,
-    fileCount: 0,
-    period: "02",
-    companyId: "c1",
-    companyName: "Mustermann GmbH",
-    amount: "1.234,56",
-  },
-  {
-    id: "5",
-    title: "Jahresabschluss 2024",
-    description: "Abgeschlossener Jahresabschluss für das Geschäftsjahr 2024.",
-    dueDate: "31. Jan",
-    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days
-    status: "completed" as TaskStatus,
-    assignee: { name: "Anna", initials: "AM" },
-    commentCount: 8,
-    fileCount: 5,
-    period: "01",
-    companyId: "c2",
-    companyName: "Beispiel AG",
-    amount: "0,00",
-  },
-  {
-    id: "6",
-    title: "USt-Voranmeldung Januar",
-    description: "Monatliche Umsatzsteuer-Voranmeldung für Januar 2025.",
-    dueDate: "10. Feb",
-    createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000), // 25 days - GREEN
-    status: "completed" as TaskStatus,
-    assignee: { name: "Maria", initials: "MM" },
-    commentCount: 2,
-    fileCount: 1,
-    period: "01",
-    companyId: "c1",
-    companyName: "Mustermann GmbH",
-    amount: "3.450,00",
-  },
-];
+interface Task {
+  id: string;
+  bookingText: string | null;
+  amount: string | null;
+  period: string | null;
+  status: "open" | "submitted" | "completed";
+  trafficLight: "green" | "yellow" | "red";
+  createdAt: Date;
+  company: {
+    id: string;
+    name: string;
+  };
+  comments: Array<{ id: string }>;
+  files: Array<{ id: string }>;
+}
 
-// Mock companies
-const companies = [
-  { id: "all", name: "Alle Mandanten" },
-  { id: "c1", name: "Mustermann GmbH" },
-  { id: "c2", name: "Beispiel AG" },
-];
-
-const CURRENT_USER_COMPANY_ID = "c1";
+interface Company {
+  id: string;
+  name: string;
+}
 
 function TasksContent() {
   const searchParams = useSearchParams();
   const { isEmployee, isCustomer } = useRole();
   const [selectedCompany, setSelectedCompany] = useState("all");
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
-  
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const filter = searchParams.get("filter") || "all";
   const month = searchParams.get("month");
 
+  // Fetch companies on mount (for employees)
+  useEffect(() => {
+    if (isEmployee) {
+      fetchCompanies().then((data) => {
+        setCompanies([{ id: "all", name: "Alle Mandanten" }, ...data]);
+      });
+    }
+  }, [isEmployee]);
+
+  // Fetch tasks when filters change
+  useEffect(() => {
+    const loadTasks = async () => {
+      setLoading(true);
+      try {
+        const filters = {
+          period: month || undefined,
+          companyId: selectedCompany !== "all" ? selectedCompany : undefined,
+        };
+
+        const fetchedTasks = await fetchTasks(filters);
+        setTasks(fetchedTasks as unknown as Task[]);
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTasks();
+  }, [month, selectedCompany]);
+
   const filteredTasks = useMemo(() => {
-    const tasks = allTasks.filter(task => {
-      // Role filter
-      if (isCustomer && task.companyId !== CURRENT_USER_COMPANY_ID) {
-        return false;
-      }
-
-      // Company filter for employees
-      if (isEmployee && selectedCompany !== "all" && task.companyId !== selectedCompany) {
-        return false;
-      }
-
-      // Month filter
-      if (month && task.period !== month) {
-        return false;
-      }
-
+    const filtered = tasks.filter((task) => {
       // Status filter
-      const days = Math.floor((Date.now() - task.createdAt.getTime()) / (1000 * 60 * 60 * 24));
-      const trafficLight = calculateTrafficLight(days);
-
       switch (filter) {
         case "open":
           return task.status === "open";
@@ -150,9 +95,9 @@ function TasksContent() {
         case "completed":
           return task.status === "completed";
         case "red":
-          return trafficLight === "red" && task.status !== "completed";
+          return task.trafficLight === "red" && task.status !== "completed";
         case "yellow":
-          return trafficLight === "yellow" && task.status !== "completed";
+          return task.trafficLight === "yellow" && task.status !== "completed";
         case "all":
         default:
           return true;
@@ -160,43 +105,74 @@ function TasksContent() {
     });
 
     // Sort by priority (red/oldest first)
-    return sortTasksByPriority(tasks);
-  }, [filter, month, isCustomer, isEmployee, selectedCompany]);
-  
-  const filterLabel = FILTER_OPTIONS.find(f => f.key === filter)?.label || "Alle";
-  const monthLabel = month ? MONTHS.find(m => m.key === month)?.full : null;
+    return sortTasksByPriority(
+      filtered.map((task) => ({
+        id: task.id,
+        title: task.bookingText || "Keine Beschreibung",
+        description: task.bookingText || "",
+        dueDate: "Offen",
+        createdAt: new Date(task.createdAt),
+        status: task.status as TaskStatus,
+        assignee: { name: "Team", initials: "LX" },
+        commentCount: task.comments.length,
+        fileCount: task.files.length,
+        period: task.period || "",
+        companyId: task.company.id,
+        companyName: task.company.name,
+        amount: task.amount || "0,00",
+      }))
+    );
+  }, [tasks, filter]);
+
+  const filterLabel =
+    FILTER_OPTIONS.find((f) => f.key === filter)?.label || "Alle";
+  const monthLabel = month ? MONTHS.find((m) => m.key === month)?.full : null;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-slate-500">Lade Aufgaben...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
             {isCustomer ? "Meine Aufgaben" : "Alle Aufgaben"}
           </h1>
-          <p className="text-slate-500 mt-1">
-            {filterLabel} 
+          <p className="text-sm sm:text-base text-slate-500 mt-1 break-words">
+            {filterLabel}
             {monthLabel && ` • ${monthLabel}`}
             {` • ${filteredTasks.length} Aufgaben`}
-            <span className="text-xs ml-2">(Sortiert nach Dringlichkeit)</span>
+            <span className="hidden sm:inline text-xs ml-2">
+              (Sortiert nach Dringlichkeit)
+            </span>
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           {/* Company Filter for employees */}
           {isEmployee && (
             <div className="relative">
               <Button
                 variant="outline"
                 onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
+                className="w-auto"
               >
-                <Building2 className="w-4 h-4 mr-2" />
-                {companies.find(c => c.id === selectedCompany)?.name}
-                <ChevronDown className="w-4 h-4 ml-2" />
+                <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="truncate max-w-[150px] sm:max-w-none">
+                  {companies.find((c) => c.id === selectedCompany)?.name ||
+                    "Alle Mandanten"}
+                </span>
+                <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
               </Button>
-              
+
               {showCompanyDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
-                  {companies.map(company => (
+                  {companies.map((company) => (
                     <button
                       key={company.id}
                       onClick={() => {
@@ -204,7 +180,9 @@ function TasksContent() {
                         setShowCompanyDropdown(false);
                       }}
                       className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
-                        selectedCompany === company.id ? "bg-blue-50 text-blue-700" : ""
+                        selectedCompany === company.id
+                          ? "bg-blue-50 text-blue-700"
+                          : ""
                       }`}
                     >
                       {company.name}
@@ -214,45 +192,54 @@ function TasksContent() {
               )}
             </div>
           )}
-          
+
           {isEmployee && (
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Neue Aufgabe
+            <Button className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Neue Aufgabe</span>
+              <span className="inline xs:hidden">Neu</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             type="search"
             placeholder="Aufgaben durchsuchen..."
-            className="pl-10"
+            className="pl-10 text-sm sm:text-base"
           />
         </div>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" className="flex-shrink-0">
           <SlidersHorizontal className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Traffic Light Legend */}
-      <div className="flex items-center gap-6 text-sm bg-slate-50 p-3 rounded-lg">
-        <span className="font-medium text-slate-600">Ampel-System:</span>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-green-500" />
-          <span className="text-slate-600">Neu (0-30 Tage)</span>
+      <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm bg-slate-50 p-3 rounded-lg">
+        <span className="font-medium text-slate-600 w-full sm:w-auto mb-1 sm:mb-0">
+          Ampel-System:
+        </span>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+          <span className="text-slate-600 whitespace-nowrap">
+            Neu (0-30 Tage)
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-yellow-500" />
-          <span className="text-slate-600">Warnung (&gt;30 Tage)</span>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="w-3 h-3 rounded-full bg-yellow-500 flex-shrink-0" />
+          <span className="text-slate-600 whitespace-nowrap">
+            Warnung (&gt;30 Tage)
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-slate-600">Dringend (&gt;60 Tage)</span>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
+          <span className="text-slate-600 whitespace-nowrap">
+            Dringend (&gt;60 Tage)
+          </span>
         </div>
       </div>
 
@@ -295,7 +282,11 @@ function TasksContent() {
 
 export default function TasksPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full">Laden...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-full">Laden...</div>
+      }
+    >
       <TasksContent />
     </Suspense>
   );

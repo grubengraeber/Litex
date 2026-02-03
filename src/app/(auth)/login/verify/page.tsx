@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KeyRound, ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 
 function VerifyContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
   
@@ -71,24 +71,43 @@ function VerifyContent() {
   const handleSubmit = async (codeString?: string) => {
     const fullCode = codeString || code.join("");
     if (fullCode.length < 6) return;
-    
+
     setIsLoading(true);
     setError("");
-    
-    // TODO: Implement actual code verification
-    // POST /api/auth/verify-code { email, code }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Mock: Check if code is "123456" for demo
-    if (fullCode === "123456") {
-      router.push("/dashboard");
-    } else {
-      setError("Ungültiger Code. Bitte versuchen Sie es erneut.");
+
+    try {
+      console.log("Attempting sign in with:", { email, code: fullCode });
+
+      const result = await signIn("code", {
+        email,
+        code: fullCode,
+        redirect: false,
+      });
+
+      console.log("Sign in result:", result);
+
+      if (result?.error) {
+        console.error("Sign in error:", result.error);
+        throw new Error(`Ungültiger oder abgelaufener Code: ${result.error}`);
+      }
+
+      if (result?.ok) {
+        console.log("Sign in successful, redirecting to dashboard");
+        // Redirect to dashboard
+        window.location.href = "/dashboard";
+      } else {
+        console.error("Sign in failed without error message");
+        throw new Error("Verification failed");
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.error("Exception during sign in:", error);
+      setError(error.message || "Ungültiger Code. Bitte versuchen Sie es erneut.");
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handleResend = async () => {

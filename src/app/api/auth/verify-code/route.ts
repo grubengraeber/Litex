@@ -17,10 +17,9 @@ export async function POST(request: NextRequest) {
     // TEST MODE: Accept code 123456 when no database
     if (!db || process.env.AUTH_TEST_MODE === "true") {
       if (code === "123456") {
-        return NextResponse.json({
+        const testSessionToken = "test-session-" + Date.now();
+        const response = NextResponse.json({
           success: true,
-          sessionToken: "test-session-" + Date.now(),
-          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           user: {
             id: "test-user",
             email: email,
@@ -30,6 +29,22 @@ export async function POST(request: NextRequest) {
             status: "active",
           },
         });
+
+        const cookieName = process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token";
+
+        response.cookies.set({
+          name: cookieName,
+          value: testSessionToken,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 30 * 24 * 60 * 60,
+        });
+
+        return response;
       }
       return NextResponse.json(
         { error: "Test mode: use code 123456" },
@@ -106,11 +121,9 @@ export async function POST(request: NextRequest) {
       expires,
     });
 
-    // Return session info for client-side cookie handling
-    return NextResponse.json({
+    // Set session cookie
+    const response = NextResponse.json({
       success: true,
-      sessionToken,
-      expires: expires.toISOString(),
       user: {
         id: user.id,
         email: user.email,
@@ -120,6 +133,23 @@ export async function POST(request: NextRequest) {
         status: user.status,
       },
     });
+
+    // Set NextAuth session cookie
+    const cookieName = process.env.NODE_ENV === "production"
+      ? "__Secure-next-auth.session-token"
+      : "next-auth.session-token";
+
+    response.cookies.set({
+      name: cookieName,
+      value: sessionToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    });
+
+    return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

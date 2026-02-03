@@ -390,3 +390,68 @@ export async function getCompanyByBmdId(bmdId: string) {
     where: eq(companies.bmdId, bmdId),
   });
 }
+
+// ==================== STATS ====================
+
+export interface TaskStats {
+  total: number;
+  green: number;
+  yellow: number;
+  red: number;
+  open: number;
+  submitted: number;
+  completed: number;
+}
+
+export async function getTaskStats(
+  userId: string,
+  userRole: "customer" | "employee",
+  userCompanyId: string | null,
+  filters: TaskFilters = {}
+): Promise<TaskStats> {
+  if (!db) throw new Error("Database not configured");
+
+  const conditions = [];
+
+  // Role-based filtering
+  if (userRole === "customer" && userCompanyId) {
+    conditions.push(eq(tasks.companyId, userCompanyId));
+  } else if (filters.companyId) {
+    conditions.push(eq(tasks.companyId, filters.companyId));
+  }
+
+  // Period filter
+  if (filters.period) {
+    conditions.push(eq(tasks.period, filters.period));
+  }
+
+  const allTasks = await db.query.tasks.findMany({
+    where: conditions.length > 0 ? and(...conditions) : undefined,
+  });
+
+  const stats: TaskStats = {
+    total: allTasks.length,
+    green: 0,
+    yellow: 0,
+    red: 0,
+    open: 0,
+    submitted: 0,
+    completed: 0,
+  };
+
+  for (const task of allTasks) {
+    // Count by status
+    if (task.status === "open") stats.open++;
+    else if (task.status === "submitted") stats.submitted++;
+    else if (task.status === "completed") stats.completed++;
+
+    // Count by traffic light (excluding completed)
+    if (task.status !== "completed") {
+      if (task.trafficLight === "green") stats.green++;
+      else if (task.trafficLight === "yellow") stats.yellow++;
+      else if (task.trafficLight === "red") stats.red++;
+    }
+  }
+
+  return stats;
+}
