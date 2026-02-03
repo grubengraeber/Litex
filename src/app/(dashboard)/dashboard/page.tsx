@@ -22,8 +22,8 @@ interface Task {
     id: string;
     name: string;
   };
-  comments: Array<{ id: string }>;
-  files: Array<{ id: string }>;
+  comments?: Array<{ id: string }>;
+  files?: Array<{ id: string }>;
 }
 
 interface Company {
@@ -106,8 +106,8 @@ function DashboardContent() {
         createdAt: new Date(task.createdAt),
         status: task.status as TaskStatus,
         assignee: { name: "Team", initials: "LX" },
-        commentCount: task.comments.length,
-        fileCount: task.files.length,
+        commentCount: task.comments?.length || 0,
+        fileCount: task.files?.length || 0,
         period: task.period || "",
         companyId: task.company.id,
         companyName: task.company.name,
