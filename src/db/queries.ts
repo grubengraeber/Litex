@@ -12,6 +12,7 @@ export interface TaskFilters {
   search?: string;
   limit?: number;
   offset?: number;
+  includeComments?: boolean;
 }
 
 export async function getTasksForUser(
@@ -57,15 +58,24 @@ export async function getTasksForUser(
     with: {
       company: true,
       files: true,
-      comments: {
+      comments: filters.includeComments ? {
         with: { user: true },
         orderBy: [desc(comments.createdAt)],
-      },
+      } : undefined,
     },
     orderBy: [asc(tasks.trafficLight), desc(tasks.createdAt)],
     limit: filters.limit || 50,
     offset: filters.offset || 0,
   });
+
+  // Add comment count and last comment if requested
+  if (filters.includeComments) {
+    return result.map(task => ({
+      ...task,
+      commentCount: task.comments?.length || 0,
+      lastComment: task.comments && task.comments.length > 0 ? task.comments[0] : null,
+    }));
+  }
 
   return result;
 }

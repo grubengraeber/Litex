@@ -18,27 +18,30 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Call NextAuth email sign in
-      const response = await fetch("/api/auth/signin/email", {
+      // Request verification code
+      const response = await fetch("/api/auth/request-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          callbackUrl: "/dashboard",
-        }),
+        body: JSON.stringify({ email }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
+        // In development, log the code to console
+        if (data.code) {
+          console.log("🔐 Verification code:", data.code);
+          console.log("📧 Email:", email);
+          console.log("⏰ Expires:", new Date(data.expiresAt).toLocaleTimeString("de-DE"));
+        }
         setSent(true);
       } else {
-        // Handle error - for now just show the sent screen anyway
-        // since the user can still manually enter their code
-        setSent(true);
+        console.error("Failed to request code:", data.error);
+        alert("Fehler beim Anfordern des Codes. Bitte versuchen Sie es erneut.");
       }
     } catch (error) {
       console.error("Sign in error:", error);
-      // Show sent screen anyway - user can enter code manually
-      setSent(true);
+      alert("Fehler beim Anfordern des Codes. Bitte versuchen Sie es erneut.");
     } finally {
       setIsLoading(false);
     }

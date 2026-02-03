@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronLeft, ChevronRight, Paperclip, Send, File, X, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Paperclip, Send, File, X, MessageSquare } from "lucide-react";
 
 export interface ChatMessage {
   id: string;
@@ -100,8 +100,8 @@ const FILE_STATUS_LABELS = {
   rejected: "Abgelehnt",
 };
 
-export function ChatPanel({ 
-  title = "TEAM CHAT", 
+export function ChatPanel({
+  title = "TEAM CHAT",
   taskId,
   messages = defaultMessages,
   onSendMessage,
@@ -109,7 +109,6 @@ export function ChatPanel({
   defaultCollapsed = false,
   hideHeader = false,
 }: ChatPanelProps) {
-  const [isOpen, setIsOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [message, setMessage] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -197,22 +196,21 @@ export function ChatPanel({
               <ChevronRight className="w-4 h-4 text-slate-500" />
             </button>
           )}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex-1 flex items-center justify-between"
-          >
+          <div className="flex-1 flex items-center justify-between">
             <span className="font-semibold">
               {taskId ? "KOMMENTARE" : title}
             </span>
-            <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
-          </button>
+            {messages.length > 0 && (
+              <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                {messages.length}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
-      {(isOpen || hideHeader) && (
-        <>
-          {/* Messages */}
-          <div className={cn(
+      {/* Messages */}
+      <div className={cn(
             "flex-1 overflow-auto p-4",
             hideHeader && "px-4 sm:px-6"
           )}>
@@ -380,8 +378,6 @@ export function ChatPanel({
               </p>
             </div>
           </div>
-        </>
-      )}
     </div>
   );
 }

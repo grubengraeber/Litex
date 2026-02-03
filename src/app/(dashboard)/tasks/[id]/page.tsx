@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChatPanel, type ChatMessage } from "@/components/layout/chat-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,21 +21,18 @@ import {
   Euro,
   Paperclip,
   CheckCircle,
-  XCircle,
   Send,
   RotateCcw,
   AlertTriangle,
-  MessageCircle
+  MessageSquare
 } from "lucide-react";
 import {
   fetchTaskDetails,
-  fetchTaskComments,
-  addComment,
   submitTask,
   completeTask,
   returnTaskToCustomer,
 } from "./actions";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Task {
   id: string;
@@ -93,14 +89,10 @@ function formatFileSize(bytes: number): string {
 export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const { isEmployee, isCustomer, permissions } = useRole();
-  const { toast } = useToast();
   const [task, setTask] = useState<Task | null>(null);
-  const [comments, setComments] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnComment, setReturnComment] = useState("");
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   // Fetch task details
   useEffect(() => {
@@ -108,144 +100,16 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       try {
         const taskData = await fetchTaskDetails(id);
         setTask(taskData as unknown as Task);
-
-        // Get current user ID from session
-        const session = await fetch("/api/auth/session").then(r => r.json());
-        const userId = session?.user?.id || "";
-        setCurrentUserId(userId);
       } catch (error) {
         console.error("Failed to fetch task:", error);
-        toast({
-          title: "Fehler",
-          description: "Aufgabe konnte nicht geladen werden",
-          variant: "destructive",
-        });
+        toast.error("Aufgabe konnte nicht geladen werden");
       } finally {
         setLoading(false);
       }
     };
 
     loadTask();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  // Fetch comments with controlled polling
-  useEffect(() => {
-    let isMounted = true;
-    let isLoading = false;
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const loadComments = async () => {
-      // Prevent overlapping requests
-      if (isLoading || !isMounted) return;
-
-      isLoading = true;
-      try {
-        const commentsData = await fetchTaskComments(id);
-
-        if (!isMounted) return;
-
-        // Transform to ChatMessage format
-        const chatMessages: ChatMessage[] = commentsData.map((comment) => {
-          const initials = comment.user.name
-            ? comment.user.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)
-            : comment.user.email.slice(0, 2).toUpperCase();
-
-          return {
-            id: comment.id,
-            content: comment.content,
-            sender: {
-              name: comment.user.name || comment.user.email,
-              initials,
-              isCurrentUser: comment.user.id === currentUserId,
-            },
-            timestamp: comment.createdAt ? new Date(comment.createdAt) : new Date(),
-          };
-        });
-
-        setComments(chatMessages);
-      } catch (error) {
-        console.error("Failed to fetch comments:", error);
-      } finally {
-        isLoading = false;
-      }
-    };
-
-    if (currentUserId) {
-      // Initial load
-      loadComments();
-
-      // Poll for new comments every 30 seconds (reduced from 10 seconds)
-      intervalId = setInterval(() => {
-        if (isMounted && !isLoading) {
-          loadComments();
-        }
-      }, 30000);
-    }
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [id, currentUserId]);
-
-  // Handle sending messages
-  const handleSendMessage = async (content: string, attachments?: File[]) => {
-    if (!content.trim() && !attachments?.length) return;
-
-    try {
-      // Send comment
-      if (content.trim()) {
-        await addComment(id, content);
-      }
-
-      // TODO: Handle file attachments
-      if (attachments?.length) {
-        console.log("Uploading attachments:", attachments);
-        // Upload via existing API route
-      }
-
-      // Refresh comments
-      const commentsData = await fetchTaskComments(id);
-      const chatMessages: ChatMessage[] = commentsData.map((comment) => {
-        const initials = comment.user.name
-          ? comment.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-          : comment.user.email.slice(0, 2).toUpperCase();
-
-        return {
-          id: comment.id,
-          content: comment.content,
-          sender: {
-            name: comment.user.name || comment.user.email,
-            initials,
-            isCurrentUser: comment.user.id === currentUserId,
-          },
-          timestamp: comment.createdAt ? new Date(comment.createdAt) : new Date(),
-        };
-      });
-      setComments(chatMessages);
-
-      toast({
-        title: "Kommentar gesendet",
-        description: "Ihr Kommentar wurde erfolgreich hinzugefügt",
-      });
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht gesendet werden",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Action handlers
   const handleSubmit = async () => {
@@ -253,17 +117,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       await submitTask(id);
       const updatedTask = await fetchTaskDetails(id);
       setTask(updatedTask as unknown as Task);
-      toast({
-        title: "Eingereicht",
-        description: "Aufgabe wurde erfolgreich eingereicht",
-      });
+      toast.success("Aufgabe wurde erfolgreich eingereicht");
     } catch (error) {
       console.error("Failed to submit task:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht eingereicht werden",
-        variant: "destructive",
-      });
+      toast.error("Aufgabe konnte nicht eingereicht werden");
     }
   };
 
@@ -272,17 +129,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       await completeTask(id);
       const updatedTask = await fetchTaskDetails(id);
       setTask(updatedTask as unknown as Task);
-      toast({
-        title: "Abgeschlossen",
-        description: "Aufgabe wurde erfolgreich abgeschlossen",
-      });
+      toast.success("Aufgabe wurde erfolgreich abgeschlossen");
     } catch (error) {
       console.error("Failed to complete task:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht abgeschlossen werden",
-        variant: "destructive",
-      });
+      toast.error("Aufgabe konnte nicht abgeschlossen werden");
     }
   };
 
@@ -295,17 +145,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       setTask(updatedTask as unknown as Task);
       setShowReturnDialog(false);
       setReturnComment("");
-      toast({
-        title: "Zurückgesendet",
-        description: "Aufgabe wurde an den Kunden zurückgesendet",
-      });
+      toast.success("Aufgabe wurde an den Kunden zurückgesendet");
     } catch (error) {
       console.error("Failed to return task:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht zurückgesendet werden",
-        variant: "destructive",
-      });
+      toast.error("Aufgabe konnte nicht zurückgesendet werden");
     }
   };
 
@@ -365,17 +208,10 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
       const updatedTask = await fetchTaskDetails(id);
       setTask(updatedTask as unknown as Task);
 
-      toast({
-        title: "Hochgeladen",
-        description: `${files.length} Datei(en) erfolgreich hochgeladen`,
-      });
+      toast.success(`${files.length} ${files.length === 1 ? 'Datei' : 'Dateien'} erfolgreich hochgeladen`);
     } catch (error) {
       console.error("Failed to upload files:", error);
-      toast({
-        title: "Fehler",
-        description: "Dateien konnten nicht hochgeladen werden",
-        variant: "destructive",
-      });
+      toast.error("Dateien konnten nicht hochgeladen werden");
     }
   };
 
@@ -408,9 +244,9 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   const statusConfig = TASK_STATUS[task.status];
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-6">
+    <div className="max-w-6xl mx-auto space-y-4 lg:space-y-6">
       {/* Main Content */}
-      <div className="flex-1 min-w-0 space-y-4 lg:space-y-6 overflow-auto order-2 lg:order-1">
+      <div className="space-y-4 lg:space-y-6">
         {/* Back & Actions */}
         <div className="flex items-center justify-between">
           <Link href="/tasks">
@@ -663,62 +499,32 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
           <span>Aktualisiert: {formatDate(task.updatedAt)}</span>
           <span>Alter: {daysSinceCreation} Tage</span>
         </div>
-      </div>
 
-      {/* Task Chat - Desktop: side panel */}
-      <div className="hidden lg:flex order-2 flex-shrink-0 h-full">
-        <ChatPanel
-          title="KOMMENTARE"
-          taskId={id}
-          messages={comments}
-          onSendMessage={handleSendMessage}
-          collapsible
-        />
-      </div>
-
-      {/* Mobile Chat FAB - Opens fullscreen chat */}
-      <Button
-        onClick={() => setIsChatOpen(true)}
-        className="lg:hidden fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700"
-        size="icon"
-      >
-        <MessageCircle className="h-6 w-6" />
-        {comments.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {comments.length}
-          </span>
-        )}
-      </Button>
-
-      {/* Mobile Chat - Fullscreen Overlay */}
-      {isChatOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-white flex flex-col">
-          {/* Header */}
-          <div className="px-4 sm:px-6 h-14 border-b border-slate-200 shrink-0">
-            <div className="max-w-xl mx-auto h-full flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Kommentare</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsChatOpen(false)}
-                className="h-10 w-10"
-              >
-                <XCircle className="h-6 w-6" />
-              </Button>
+        {/* Chat Link */}
+        <Card className="border-2 border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-blue-900">Kommentare & Chat</h3>
+                  <p className="text-sm text-blue-700">
+                    Zur Kommunikation über diese Aufgabe
+                  </p>
+                </div>
+              </div>
+              <Link href={`/chats/${id}`}>
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Chat öffnen
+                </Button>
+              </Link>
             </div>
-          </div>
-          {/* Chat Content */}
-          <div className="flex-1 overflow-hidden">
-            <ChatPanel
-              title="KOMMENTARE"
-              taskId={id}
-              messages={comments}
-              onSendMessage={handleSendMessage}
-              hideHeader
-            />
-          </div>
-        </div>
-      )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

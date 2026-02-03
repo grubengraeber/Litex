@@ -16,6 +16,7 @@ import {
   FileText,
   Building2,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
 
@@ -37,12 +38,14 @@ import {
 const employeeNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Aufgaben", href: "/tasks", icon: FileText },
+  { name: "Chats", href: "/chats", icon: MessageSquare },
   { name: "Mandanten", href: "/companies", icon: Building2 },
 ];
 
 const customerNavigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Meine Aufgaben", href: "/tasks", icon: FileText },
+  { name: "Chats", href: "/chats", icon: MessageSquare },
 ];
 
 // Administration section - shown at the bottom
