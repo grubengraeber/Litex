@@ -6,6 +6,7 @@ export const roleEnum = pgEnum("role", ["customer", "employee"]);
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "disabled"]);
 export const taskStatusEnum = pgEnum("task_status", ["open", "submitted", "completed"]);
 export const trafficLightEnum = pgEnum("traffic_light", ["green", "yellow", "red"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["new_message", "task_assigned", "deadline_warning"]);
 
 // Auth.js required tables
 export const users = pgTable("users", {
@@ -109,11 +110,42 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });
 
+// Chat Messages
+export const messages = pgTable("messages", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  taskId: uuid("task_id").notNull().references(() => tasks.id),
+  userId: text("user_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const messageReadStatus = pgTable("message_read_status", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  messageId: uuid("message_id").notNull().references(() => messages.id),
+  userId: text("user_id").notNull().references(() => users.id),
+  readAt: timestamp("read_at", { mode: "date" }).defaultNow(),
+});
+
+// Notifications
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  taskId: uuid("task_id").references(() => tasks.id),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, { fields: [users.companyId], references: [companies.id] }),
   comments: many(comments),
   files: many(files),
+  messages: many(messages),
+  messageReadStatuses: many(messageReadStatus),
+  notifications: many(notifications),
 }));
 
 export const companiesRelations = relations(companies, ({ many }) => ({
@@ -125,6 +157,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   company: one(companies, { fields: [tasks.companyId], references: [companies.id] }),
   files: many(files),
   comments: many(comments),
+  messages: many(messages),
+  notifications: many(notifications),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -135,4 +169,20 @@ export const commentsRelations = relations(comments, ({ one }) => ({
 export const filesRelations = relations(files, ({ one }) => ({
   task: one(tasks, { fields: [files.taskId], references: [tasks.id] }),
   user: one(users, { fields: [files.uploadedBy], references: [users.id] }),
+}));
+
+export const messagesRelations = relations(messages, ({ one, many }) => ({
+  task: one(tasks, { fields: [messages.taskId], references: [tasks.id] }),
+  user: one(users, { fields: [messages.userId], references: [users.id] }),
+  readStatuses: many(messageReadStatus),
+}));
+
+export const messageReadStatusRelations = relations(messageReadStatus, ({ one }) => ({
+  message: one(messages, { fields: [messageReadStatus.messageId], references: [messages.id] }),
+  user: one(users, { fields: [messageReadStatus.userId], references: [users.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+  task: one(tasks, { fields: [notifications.taskId], references: [tasks.id] }),
 }));
