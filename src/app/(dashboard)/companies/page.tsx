@@ -10,6 +10,8 @@ import { ViewToggle } from "@/components/tasks/view-toggle";
 import { CompaniesDataTable } from "@/components/companies/companies-data-table";
 import { CompanyDialog } from "@/components/companies/company-dialog";
 import { useRole } from "@/hooks/use-role";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 import {
   Plus,
   Search,
@@ -41,12 +43,17 @@ interface Company {
 
 function CompaniesContent() {
   const { isEmployee } = useRole();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
+  // Check permissions for company actions
+  const canCreateCompany = hasPermission(PERMISSIONS.CREATE_CLIENTS);
+  const canEditCompany = hasPermission(PERMISSIONS.EDIT_CLIENTS);
 
   // Load view preference
   useEffect(() => {
@@ -148,7 +155,7 @@ function CompaniesContent() {
     );
   }
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-slate-500">Lade Mandanten...</div>
@@ -168,13 +175,15 @@ function CompaniesContent() {
         </div>
         <div className="flex items-center gap-3">
           <ViewToggle view={view} onViewChange={handleViewChange} />
-          <Button
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={handleCreate}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Mandant anlegen
-          </Button>
+          {canCreateCompany && (
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleCreate}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Mandant anlegen
+            </Button>
+          )}
         </div>
       </div>
 
@@ -209,21 +218,23 @@ function CompaniesContent() {
                         </span>
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="shrink-0">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(company)}>
-                          Bearbeiten
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(company)}>
-                          {company.isActive ? "Deaktivieren" : "Aktivieren"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {canEditCompany && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="shrink-0">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(company)}>
+                            Bearbeiten
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(company)}>
+                            {company.isActive ? "Deaktivieren" : "Aktivieren"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
@@ -264,8 +275,8 @@ function CompaniesContent() {
         ) : (
           <CompaniesDataTable
             companies={filteredCompanies}
-            onEdit={handleEdit}
-            onToggleStatus={handleToggleStatus}
+            onEdit={canEditCompany ? handleEdit : undefined}
+            onToggleStatus={canEditCompany ? handleToggleStatus : undefined}
           />
         )
       ) : (

@@ -46,12 +46,19 @@ async function seed() {
 
       // Task permissions
       { name: "create_task", description: "Create new tasks", category: "tasks" },
+      { name: "create_tasks", description: "Create new tasks (alias)", category: "tasks" },
       { name: "read_task", description: "Read task details", category: "tasks" },
       { name: "update_task", description: "Update task information", category: "tasks" },
+      { name: "edit_tasks", description: "Edit tasks (alias)", category: "tasks" },
       { name: "delete_task", description: "Delete tasks", category: "tasks" },
+      { name: "delete_tasks", description: "Delete tasks (alias)", category: "tasks" },
       { name: "submit_task", description: "Submit task for review", category: "tasks" },
+      { name: "submit_tasks", description: "Submit tasks (alias)", category: "tasks" },
       { name: "complete_task", description: "Mark task as completed", category: "tasks" },
+      { name: "complete_tasks", description: "Complete tasks (alias)", category: "tasks" },
       { name: "assign_task", description: "Assign tasks to users", category: "tasks" },
+      { name: "return_tasks", description: "Return tasks for revision", category: "tasks" },
+      { name: "view_all_tasks", description: "View all tasks across all companies", category: "tasks" },
 
       // File permissions
       { name: "upload_file", description: "Upload files", category: "files" },
@@ -130,8 +137,10 @@ async function seed() {
       // All view permissions
       "view_dashboard", "view_tasks", "view_chats", "view_files", "view_companies",
       "view_users", "view_teams", "view_audit_logs", "view_settings",
-      // Task permissions
-      "create_task", "read_task", "update_task", "submit_task", "complete_task", "assign_task",
+      // Task permissions (includes both singular and plural forms)
+      "create_task", "create_tasks", "read_task", "update_task", "edit_tasks",
+      "submit_task", "submit_tasks", "complete_task", "complete_tasks",
+      "assign_task", "return_tasks", "view_all_tasks",
       // File permissions (all except delete)
       "upload_file", "download_file", "approve_file", "reject_file",
       // User permissions
@@ -205,9 +214,16 @@ async function seed() {
 
     // Create Users
     console.log("👥 Creating users...");
-    const [employee1, employee2, customer1, customer2, customer3] = await db
+    const [admin, employee1, employee2, customer1, customer2, customer3] = await db
       .insert(users)
       .values([
+        {
+          name: "Admin User",
+          email: "admin@litex.com",
+          role: "employee",
+          status: "active",
+          emailVerified: new Date(),
+        },
         {
           name: "Thomas Schmidt",
           email: "thomas@litex.com",
@@ -252,9 +268,11 @@ async function seed() {
     // Assign Roles to Users
     console.log("🎭 Assigning roles to users...");
     const userRoleData = [
+      // Admin gets Admin role
+      { userId: admin.id, roleId: roleMap.get("Admin")!, assignedBy: null },
       // Employees get Employee role
-      { userId: employee1.id, roleId: roleMap.get("Employee")!, assignedBy: null },
-      { userId: employee2.id, roleId: roleMap.get("Employee")!, assignedBy: null },
+      { userId: employee1.id, roleId: roleMap.get("Employee")!, assignedBy: admin.id },
+      { userId: employee2.id, roleId: roleMap.get("Employee")!, assignedBy: admin.id },
       // Customers get Customer role
       { userId: customer1.id, roleId: roleMap.get("Customer")!, assignedBy: employee1.id },
       { userId: customer2.id, roleId: roleMap.get("Customer")!, assignedBy: employee1.id },
@@ -620,7 +638,7 @@ async function seed() {
     console.log("Permissions:", createdPermissions.length, "across", Array.from(categories).length, "categories");
     console.log("Roles:", createdRoles.map(r => r.name).join(", "));
     console.log("Companies:", [company1.name, company2.name, company3.name].join(", "));
-    console.log("Users:", [employee1.name, employee2.name, customer1.name, customer2.name, customer3.name].join(", "));
+    console.log("Users:", [admin.name, employee1.name, employee2.name, customer1.name, customer2.name, customer3.name].join(", "));
   } catch (error) {
     console.error("❌ Seed failed:", error);
     throw error;

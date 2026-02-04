@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,6 +74,7 @@ interface User {
 }
 
 export default function UsersPage() {
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [users, setUsers] = useState<User[]>([]);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +83,12 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [view, setView] = useState<"grid" | "table">("table");
+
+  // Check permissions for user actions
+  const canInviteUsers = hasPermission(PERMISSIONS.INVITE_USERS);
+  const canEditUsers = hasPermission(PERMISSIONS.EDIT_USERS);
+  const canDeleteUsers = hasPermission(PERMISSIONS.DELETE_USERS);
+  const canManageRoles = hasPermission(PERMISSIONS.MANAGE_USER_ROLES);
 
   useEffect(() => {
     const savedView = localStorage.getItem("users-view");
@@ -264,7 +273,7 @@ export default function UsersPage() {
     customer: { label: "Kunde", variant: "secondary" as const },
   };
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-slate-500">Laden...</div>
@@ -282,24 +291,28 @@ export default function UsersPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ViewToggle view={view} onViewChange={handleViewChange} />
-          {/* Desktop: Full button with text */}
-          <div className="hidden sm:block">
-            <InviteUserDialog
-              buttonText="Benutzer einladen"
-              buttonVariant="default"
-              buttonClassName="bg-blue-600 hover:bg-blue-700"
-              onInviteSuccess={fetchUsers}
-            />
-          </div>
-          {/* Mobile: Icon only */}
-          <div className="sm:hidden">
-            <InviteUserDialog
-              buttonVariant="default"
-              buttonClassName="bg-blue-600 hover:bg-blue-700"
-              iconOnly
-              onInviteSuccess={fetchUsers}
-            />
-          </div>
+          {canInviteUsers && (
+            <>
+              {/* Desktop: Full button with text */}
+              <div className="hidden sm:block">
+                <InviteUserDialog
+                  buttonText="Benutzer einladen"
+                  buttonVariant="default"
+                  buttonClassName="bg-blue-600 hover:bg-blue-700"
+                  onInviteSuccess={fetchUsers}
+                />
+              </div>
+              {/* Mobile: Icon only */}
+              <div className="sm:hidden">
+                <InviteUserDialog
+                  buttonVariant="default"
+                  buttonClassName="bg-blue-600 hover:bg-blue-700"
+                  iconOnly
+                  onInviteSuccess={fetchUsers}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -319,9 +332,9 @@ export default function UsersPage() {
       {view === "table" ? (
         <UsersDataTable
           users={filteredUsers}
-          onAssignRole={openRoleDialog}
-          onToggleStatus={handleToggleStatus}
-          onDelete={handleDeleteUser}
+          onAssignRole={canManageRoles ? openRoleDialog : undefined}
+          onToggleStatus={canEditUsers ? handleToggleStatus : undefined}
+          onDelete={canDeleteUsers ? handleDeleteUser : undefined}
         />
       ) : (
         <Card>
@@ -382,14 +395,16 @@ export default function UsersPage() {
                             <Badge variant="outline" className="text-xs">
                               {role.name}
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 hover:bg-red-100"
-                              onClick={() => handleRemoveRole(user.id, role.id)}
-                            >
-                              <X className="h-3 w-3 text-red-600" />
-                            </Button>
+                            {canManageRoles && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 hover:bg-red-100"
+                                onClick={() => handleRemoveRole(user.id, role.id)}
+                              >
+                                <X className="h-3 w-3 text-red-600" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                         {user.roles.length === 0 && (
@@ -401,47 +416,55 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openRoleDialog(user)}
-                          className="gap-2"
-                        >
-                          <UserCog className="w-4 h-4" />
-                          Rolle zuweisen
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(user)}
-                            >
-                              {user.status === "active" ? (
-                                <>
-                                  <Ban className="w-4 h-4 mr-2" />
-                                  Deaktivieren
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Aktivieren
-                                </>
+                        {canManageRoles && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openRoleDialog(user)}
+                            className="gap-2"
+                          >
+                            <UserCog className="w-4 h-4" />
+                            Rolle zuweisen
+                          </Button>
+                        )}
+                        {(canEditUsers || canDeleteUsers) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {canEditUsers && (
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleStatus(user)}
+                                >
+                                  {user.status === "active" ? (
+                                    <>
+                                      <Ban className="w-4 h-4 mr-2" />
+                                      Deaktivieren
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                      Aktivieren
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
                               )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteUser(user)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Löschen
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              {canEditUsers && canDeleteUsers && <DropdownMenuSeparator />}
+                              {canDeleteUsers && (
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Löschen
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

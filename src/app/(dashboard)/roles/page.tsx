@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +46,7 @@ interface CategorizedPermissions {
 }
 
 export default function RolesPage() {
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [roles, setRoles] = useState<Role[]>([]);
   const [categorizedPermissions, setCategorizedPermissions] = useState<CategorizedPermissions>({});
   const [loading, setLoading] = useState(true);
@@ -53,6 +56,11 @@ export default function RolesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+
+  // Check permissions for role actions
+  const canCreateRole = hasPermission(PERMISSIONS.CREATE_ROLES);
+  const canEditRole = hasPermission(PERMISSIONS.EDIT_ROLES);
+  const canDeleteRole = hasPermission(PERMISSIONS.DELETE_ROLES);
 
   // Load view preference
   useEffect(() => {
@@ -218,7 +226,7 @@ export default function RolesPage() {
     );
   });
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-slate-500">Laden...</div>
@@ -249,10 +257,12 @@ export default function RolesPage() {
         </div>
         <div className="flex items-center gap-3">
           <ViewToggle view={view} onViewChange={handleViewChange} />
-          <Button onClick={openCreateDialog} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Neue Rolle
-          </Button>
+          {canCreateRole && (
+            <Button onClick={openCreateDialog} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Neue Rolle
+            </Button>
+          )}
         </div>
       </div>
 
@@ -273,14 +283,14 @@ export default function RolesPage() {
         view === "grid" ? (
           <RolesGrid
             roles={filteredRoles}
-            onEdit={openEditDialog}
-            onDelete={openDeleteDialog}
+            onEdit={canEditRole ? openEditDialog : undefined}
+            onDelete={canDeleteRole ? openDeleteDialog : undefined}
           />
         ) : (
           <RolesDataTable
             roles={filteredRoles}
-            onEdit={openEditDialog}
-            onDelete={openDeleteDialog}
+            onEdit={canEditRole ? openEditDialog : undefined}
+            onDelete={canDeleteRole ? openDeleteDialog : undefined}
           />
         )
       ) : (

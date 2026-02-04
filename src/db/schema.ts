@@ -179,7 +179,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, { fields: [users.companyId], references: [companies.id] }),
   comments: many(comments),
   files: many(files),
-  userRoles: many(userRoles),
+  userRoles: many(userRoles, { relationName: "userRoles" }),
+  assignedRoles: many(userRoles, { relationName: "assignedRoles" }),
   teamMemberships: many(teamMembers),
   ledTeams: many(teams),
 }));
@@ -284,9 +285,17 @@ export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => 
 }));
 
 export const userRolesRelations = relations(userRoles, ({ one }) => ({
-  user: one(users, { fields: [userRoles.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [userRoles.userId],
+    references: [users.id],
+    relationName: "userRoles"
+  }),
   role: one(roles, { fields: [userRoles.roleId], references: [roles.id] }),
-  assignedByUser: one(users, { fields: [userRoles.assignedBy], references: [users.id] }),
+  assignedByUser: one(users, {
+    fields: [userRoles.assignedBy],
+    references: [users.id],
+    relationName: "assignedRoles"
+  }),
 }));
 
 // Team Relations

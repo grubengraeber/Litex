@@ -10,6 +10,8 @@ import { ViewToggle } from "@/components/tasks/view-toggle";
 import { TeamDataTable } from "@/components/team/team-data-table";
 import { InviteUserDialog } from "@/components/users/invite-user-dialog";
 import { useRole } from "@/hooks/use-role";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 import {
   Search,
   Mail,
@@ -46,10 +48,14 @@ const statusConfig = {
 
 function TeamContent() {
   const { isEmployee } = useRole();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
+
+  // Check permissions for team actions
+  const canInviteUsers = hasPermission(PERMISSIONS.INVITE_USERS);
 
   // Load view preference
   useEffect(() => {
@@ -104,7 +110,7 @@ function TeamContent() {
     return email.slice(0, 2).toUpperCase();
   };
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-slate-500">Laden...</div>
@@ -124,7 +130,7 @@ function TeamContent() {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ViewToggle view={view} onViewChange={handleViewChange} />
-          {isEmployee && (
+          {isEmployee && canInviteUsers && (
             <>
               {/* Desktop: Full button with text */}
               <div className="hidden sm:block">

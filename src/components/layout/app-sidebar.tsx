@@ -22,6 +22,8 @@ import {
   History,
 } from "lucide-react";
 import { useRole } from "@/hooks/use-role";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS, type PermissionName } from "@/lib/permissions-constants";
 
 import {
   Sidebar,
@@ -38,31 +40,39 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const employeeNavigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Aufgaben", href: "/tasks", icon: FileText },
-  { name: "Chats", href: "/chats", icon: MessageSquare },
-  { name: "Dateien", href: "/files", icon: FolderOpen },
-  { name: "Mandanten", href: "/companies", icon: Building2 },
+// Navigation items with required permissions
+type NavItem = {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permission: PermissionName | null;
+};
+
+const employeeNavigation: NavItem[] = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: PERMISSIONS.VIEW_DASHBOARD },
+  { name: "Aufgaben", href: "/tasks", icon: FileText, permission: PERMISSIONS.VIEW_TASKS },
+  { name: "Chats", href: "/chats", icon: MessageSquare, permission: null }, // No specific permission for chats yet
+  { name: "Dateien", href: "/files", icon: FolderOpen, permission: null }, // No specific permission for files yet
+  { name: "Mandanten", href: "/companies", icon: Building2, permission: PERMISSIONS.VIEW_CLIENTS },
 ];
 
-const customerNavigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Meine Aufgaben", href: "/tasks", icon: FileText },
-  { name: "Chats", href: "/chats", icon: MessageSquare },
-  { name: "Meine Dateien", href: "/files", icon: FolderOpen },
+const customerNavigation: NavItem[] = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: PERMISSIONS.VIEW_DASHBOARD },
+  { name: "Meine Aufgaben", href: "/tasks", icon: FileText, permission: PERMISSIONS.VIEW_TASKS },
+  { name: "Chats", href: "/chats", icon: MessageSquare, permission: null },
+  { name: "Meine Dateien", href: "/files", icon: FolderOpen, permission: null },
 ];
 
 // Administration section - shown at the bottom
 // Note: Audit Logs will be conditionally added based on permissions
-const employeeAdministrationBase = [
-  { name: "Team", href: "/team", icon: Users },
-  { name: "Benutzer", href: "/users", icon: UserCog },
-  { name: "Rollen", href: "/roles", icon: Shield },
-  { name: "Berechtigungen", href: "/permissions", icon: ShieldCheck },
+const employeeAdministrationBase: NavItem[] = [
+  { name: "Team", href: "/team", icon: Users, permission: PERMISSIONS.VIEW_TEAM },
+  { name: "Benutzer", href: "/users", icon: UserCog, permission: PERMISSIONS.VIEW_USERS },
+  { name: "Rollen", href: "/roles", icon: Shield, permission: PERMISSIONS.VIEW_ROLES },
+  { name: "Berechtigungen", href: "/permissions", icon: ShieldCheck, permission: PERMISSIONS.VIEW_PERMISSIONS },
 ];
 
-const customerAdministration: typeof employeeAdministrationBase = [];
+const customerAdministration: NavItem[] = [];
 
 // Filters based on status workflow and traffic light
 const filters = [
@@ -78,23 +88,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentFilter = searchParams.get("filter") || "all";
-  const { isEmployee, permissions } = useRole();
+  const { isEmployee } = useRole();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
-  const navigation = isEmployee ? employeeNavigation : customerNavigation;
+  const baseNavigation = isEmployee ? employeeNavigation : customerNavigation;
 
-  // Build administration menu with conditional Audit Logs link
+  // Filter navigation items based on permissions
+  const navigation = React.useMemo(() => {
+    if (permissionsLoading) return [];
+    return baseNavigation.filter((item) => {
+      // If no permission is required, show the item
+      if (!item.permission) return true;
+      // Otherwise, check if user has the permission
+      return hasPermission(item.permission);
+    });
+  }, [baseNavigation, hasPermission, permissionsLoading]);
+
+  // Build administration menu with conditional items based on permissions
   const employeeAdministration = React.useMemo(() => {
-    const items = [...employeeAdministrationBase];
+    if (permissionsLoading) return [];
+
+    const items = employeeAdministrationBase.filter((item) => {
+      // If no permission is required, show the item
+      if (!item.permission) return true;
+      // Otherwise, check if user has the permission
+      return hasPermission(item.permission);
+    });
+
     // Add Audit Logs at the end if user has permission
-    if (permissions.canViewAuditLogs) {
+    if (hasPermission(PERMISSIONS.VIEW_AUDIT_LOGS)) {
       items.push({
         name: "Audit Logs",
         href: "/audit-logs",
-        icon: History
+        icon: History,
+        permission: PERMISSIONS.VIEW_AUDIT_LOGS,
       });
     }
     return items;
-  }, [permissions.canViewAuditLogs]);
+  }, [hasPermission, permissionsLoading]);
 
   const administration = isEmployee ? employeeAdministration : customerAdministration;
 

@@ -51,9 +51,9 @@ export function UsersDataTable({
   onDelete,
 }: {
   users: User[];
-  onAssignRole: (user: User) => void;
-  onToggleStatus: (user: User) => void;
-  onDelete: (user: User) => void;
+  onAssignRole?: (user: User) => void;
+  onToggleStatus?: (user: User) => void;
+  onDelete?: (user: User) => void;
 }) {
   const columns: ColumnDef<User>[] = [
     {
@@ -151,32 +151,40 @@ export function UsersDataTable({
         const user = row.original;
         return (
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onAssignRole(user)}
-            >
-              <UserCog className="w-4 h-4 mr-1" />
-              Rolle
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onToggleStatus(user)}>
-                  {user.status === "active" ? "Deaktivieren" : "Aktivieren"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDelete(user)}
-                  className="text-red-600"
-                >
-                  Löschen
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {onAssignRole && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onAssignRole(user)}
+              >
+                <UserCog className="w-4 h-4 mr-1" />
+                Rolle
+              </Button>
+            )}
+            {(onToggleStatus || onDelete) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onToggleStatus && (
+                    <DropdownMenuItem onClick={() => onToggleStatus(user)}>
+                      {user.status === "active" ? "Deaktivieren" : "Aktivieren"}
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem
+                      onClick={() => onDelete(user)}
+                      className="text-red-600"
+                    >
+                      Löschen
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         );
       },

@@ -28,8 +28,8 @@ export function RolesGrid({
   onDelete,
 }: {
   roles: Role[];
-  onEdit: (role: Role) => void;
-  onDelete: (role: Role) => void;
+  onEdit?: (role: Role) => void;
+  onDelete?: (role: Role) => void;
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -55,15 +55,17 @@ export function RolesGrid({
                 </div>
               </div>
               <div className="flex gap-1 flex-shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEdit(role)}
-                  className="h-8 w-8"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                {!role.isSystem && (
+                {onEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEdit(role)}
+                    className="h-8 w-8"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {!role.isSystem && onDelete && (
                   <Button
                     variant="ghost"
                     size="icon"

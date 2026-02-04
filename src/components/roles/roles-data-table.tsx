@@ -30,8 +30,8 @@ export function RolesDataTable({
   onDelete,
 }: {
   roles: Role[];
-  onEdit: (role: Role) => void;
-  onDelete: (role: Role) => void;
+  onEdit?: (role: Role) => void;
+  onDelete?: (role: Role) => void;
 }) {
   const columns: ColumnDef<Role>[] = [
     {
@@ -113,14 +113,16 @@ export function RolesDataTable({
         const role = row.original;
         return (
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(role)}
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
-            {!role.isSystem && (
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(role)}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            )}
+            {!role.isSystem && onDelete && (
               <Button
                 variant="ghost"
                 size="sm"

@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
 import { useTaskFilters } from "@/hooks/use-task-filters";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 import { Plus } from "lucide-react";
 import { fetchTasks, fetchCompanies } from "../actions";
 
@@ -38,12 +40,18 @@ interface Company {
 
 function TasksContent() {
   const { isEmployee, isCustomer } = useRole();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { filters, setFilter, clearFilters, activeFilterCount } = useTaskFilters();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "table">("grid");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Check permissions for task actions
+  const canCreateTasks = hasPermission(PERMISSIONS.CREATE_TASKS);
+  // const canEditTasks = hasPermission(PERMISSIONS.EDIT_TASKS);
+  // const canDeleteTasks = hasPermission(PERMISSIONS.DELETE_TASKS);
 
   // Load view preference from localStorage
   useEffect(() => {
@@ -127,7 +135,7 @@ function TasksContent() {
 
   const taskCount = view === "grid" ? gridTasks.length : tableTasks.length;
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-slate-500">Lade Aufgaben...</div>
@@ -157,7 +165,7 @@ function TasksContent() {
           {/* View Toggle */}
           <ViewToggle view={view} onViewChange={handleViewChange} />
 
-          {isEmployee && (
+          {isEmployee && canCreateTasks && (
             <Button
               className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
               onClick={() => setCreateDialogOpen(true)}
@@ -244,7 +252,7 @@ function TasksContent() {
       )}
 
       {/* Create Task Dialog */}
-      {isEmployee && (
+      {isEmployee && canCreateTasks && (
         <CreateTaskDialog
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
