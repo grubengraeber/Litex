@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, authCodes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { withAuditLog } from "@/lib/audit/withAuditLog";
 import { z } from "zod";
@@ -47,8 +47,8 @@ export const POST = withAuditLog(async (request: NextRequest) => {
       );
     }
 
-    // Generate a verification code
-    const verificationCode = crypto.randomBytes(32).toString("hex");
+    // Generate a verification code (6 digits for email verification)
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
     const verificationCodeExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     // Create the user with pending status
@@ -60,10 +60,17 @@ export const POST = withAuditLog(async (request: NextRequest) => {
         role,
         status: "pending",
         emailVerified: null,
-        verificationCode,
-        verificationCodeExpiry,
+        invitedBy: session.user.id,
+        invitedAt: new Date(),
       })
       .returning();
+
+    // Store verification code in authCodes table
+    await db.insert(authCodes).values({
+      email: email.toLowerCase(),
+      code: verificationCode,
+      expires: verificationCodeExpiry,
+    });
 
     // TODO: Send invitation email with verification link
     // For now, we'll just return the verification code
