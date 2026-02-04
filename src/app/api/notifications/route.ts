@@ -5,6 +5,8 @@ import { notifications } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { withAuditLog } from "@/lib/audit/withAuditLog";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/notifications - Get user's notifications
 export const GET = withAuditLog(async (request: NextRequest) => {
   try {

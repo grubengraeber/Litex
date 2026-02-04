@@ -6,7 +6,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Settings,
   Filter,
   Circle,
   Clock,
@@ -61,12 +60,9 @@ const employeeAdministrationBase = [
   { name: "Benutzer", href: "/users", icon: UserCog },
   { name: "Rollen", href: "/roles", icon: Shield },
   { name: "Berechtigungen", href: "/permissions", icon: ShieldCheck },
-  { name: "Einstellungen", href: "/settings", icon: Settings },
 ];
 
-const customerAdministration = [
-  { name: "Einstellungen", href: "/settings", icon: Settings },
-];
+const customerAdministration: typeof employeeAdministrationBase = [];
 
 // Filters based on status workflow and traffic light
 const filters = [
@@ -89,9 +85,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Build administration menu with conditional Audit Logs link
   const employeeAdministration = React.useMemo(() => {
     const items = [...employeeAdministrationBase];
-    // Insert Audit Logs before Settings if user has permission
+    // Add Audit Logs at the end if user has permission
     if (permissions.canViewAuditLogs) {
-      items.splice(items.length - 1, 0, {
+      items.push({
         name: "Audit Logs",
         href: "/audit-logs",
         icon: History

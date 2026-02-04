@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ViewToggle } from "@/components/tasks/view-toggle";
 import { CompaniesDataTable } from "@/components/companies/companies-data-table";
+import { CompanyDialog } from "@/components/companies/company-dialog";
 import { useRole } from "@/hooks/use-role";
 import {
   Plus,
@@ -44,6 +45,8 @@ function CompaniesContent() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   // Load view preference
   useEffect(() => {
@@ -89,8 +92,18 @@ function CompaniesContent() {
   });
 
   const handleEdit = (company: Company) => {
-    toast.info(`Bearbeiten von ${company.name} - Feature kommt bald`);
-    // TODO: Open edit dialog
+    setSelectedCompany(company);
+    setDialogOpen(true);
+  };
+
+  const handleCreate = () => {
+    setSelectedCompany(null);
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedCompany(null);
   };
 
   const handleToggleStatus = async (company: Company) => {
@@ -155,7 +168,10 @@ function CompaniesContent() {
         </div>
         <div className="flex items-center gap-3">
           <ViewToggle view={view} onViewChange={handleViewChange} />
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={handleCreate}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Mandant anlegen
           </Button>
@@ -267,6 +283,13 @@ function CompaniesContent() {
           </p>
         </div>
       )}
+
+      <CompanyDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogClose}
+        company={selectedCompany}
+        onSuccess={fetchCompanies}
+      />
     </div>
   );
 }

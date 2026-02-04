@@ -73,8 +73,8 @@ export const POST = withAuditLog(async (request: NextRequest) => {
     });
 
     // TODO: Send invitation email with verification link
-    // For now, we'll just return the verification code
-    // In production, you would send an email like:
+    // For now, we'll just return a success message
+    // In production, you would send an email with the verification code
     // const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?code=${verificationCode}`;
     // await sendInvitationEmail(email, verificationUrl);
 
@@ -87,7 +87,6 @@ export const POST = withAuditLog(async (request: NextRequest) => {
           role: newUser.role,
           status: newUser.status,
         },
-        verificationCode, // Remove this in production after email is implemented
         message: "Einladung erfolgreich gesendet",
       },
       { status: 201 }

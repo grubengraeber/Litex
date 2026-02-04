@@ -2,7 +2,7 @@ import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
-import { companies, users, tasks, comments, files } from "@/db/schema";
+import { companies, users, tasks, comments, files, permissions, roles, rolePermissions, userRoles } from "@/db/schema";
 
 // Load environment variables
 config({ path: ".env" });
@@ -23,8 +23,159 @@ async function seed() {
     await db.delete(files);
     await db.delete(comments);
     await db.delete(tasks);
+    await db.delete(userRoles);
     await db.delete(users);
     await db.delete(companies);
+    await db.delete(rolePermissions);
+    await db.delete(permissions);
+    await db.delete(roles);
+
+    // Create Permissions
+    console.log("🔑 Creating permissions...");
+    const permissionData = [
+      // Navigation permissions
+      { name: "view_dashboard", description: "View dashboard", category: "navigation" },
+      { name: "view_tasks", description: "View tasks page", category: "navigation" },
+      { name: "view_chats", description: "View chats page", category: "navigation" },
+      { name: "view_files", description: "View files page", category: "navigation" },
+      { name: "view_companies", description: "View companies page", category: "navigation" },
+      { name: "view_users", description: "View users page", category: "navigation" },
+      { name: "view_teams", description: "View teams page", category: "navigation" },
+      { name: "view_audit_logs", description: "View audit logs page", category: "navigation" },
+      { name: "view_settings", description: "View settings page", category: "navigation" },
+
+      // Task permissions
+      { name: "create_task", description: "Create new tasks", category: "tasks" },
+      { name: "read_task", description: "Read task details", category: "tasks" },
+      { name: "update_task", description: "Update task information", category: "tasks" },
+      { name: "delete_task", description: "Delete tasks", category: "tasks" },
+      { name: "submit_task", description: "Submit task for review", category: "tasks" },
+      { name: "complete_task", description: "Mark task as completed", category: "tasks" },
+      { name: "assign_task", description: "Assign tasks to users", category: "tasks" },
+
+      // File permissions
+      { name: "upload_file", description: "Upload files", category: "files" },
+      { name: "download_file", description: "Download files", category: "files" },
+      { name: "delete_file", description: "Delete files", category: "files" },
+      { name: "approve_file", description: "Approve uploaded files", category: "files" },
+      { name: "reject_file", description: "Reject uploaded files", category: "files" },
+
+      // User permissions
+      { name: "create_user", description: "Create new users", category: "users" },
+      { name: "read_user", description: "View user information", category: "users" },
+      { name: "update_user", description: "Update user information", category: "users" },
+      { name: "delete_user", description: "Delete users", category: "users" },
+      { name: "invite_user", description: "Invite new users", category: "users" },
+      { name: "activate_user", description: "Activate user accounts", category: "users" },
+      { name: "deactivate_user", description: "Deactivate user accounts", category: "users" },
+
+      // Company permissions
+      { name: "create_company", description: "Create new companies", category: "companies" },
+      { name: "read_company", description: "View company information", category: "companies" },
+      { name: "update_company", description: "Update company information", category: "companies" },
+      { name: "delete_company", description: "Delete companies", category: "companies" },
+      { name: "activate_company", description: "Activate companies", category: "companies" },
+      { name: "deactivate_company", description: "Deactivate companies", category: "companies" },
+
+      // Team permissions
+      { name: "create_team", description: "Create new teams", category: "teams" },
+      { name: "read_team", description: "View team information", category: "teams" },
+      { name: "update_team", description: "Update team information", category: "teams" },
+      { name: "delete_team", description: "Delete teams", category: "teams" },
+      { name: "assign_team_member", description: "Assign members to teams", category: "teams" },
+      { name: "remove_team_member", description: "Remove members from teams", category: "teams" },
+
+      // Role permissions
+      { name: "create_role", description: "Create new roles", category: "roles" },
+      { name: "read_role", description: "View role information", category: "roles" },
+      { name: "update_role", description: "Update role information", category: "roles" },
+      { name: "delete_role", description: "Delete roles", category: "roles" },
+      { name: "assign_role", description: "Assign roles to users", category: "roles" },
+      { name: "revoke_role", description: "Revoke roles from users", category: "roles" },
+
+      // Audit permissions
+      { name: "read_audit_logs", description: "View audit logs", category: "audit" },
+      { name: "export_audit_logs", description: "Export audit logs", category: "audit" },
+    ];
+
+    const createdPermissions = await db.insert(permissions).values(permissionData).returning();
+
+    // Create a map for easy permission lookup
+    const permissionMap = new Map(createdPermissions.map(p => [p.name, p.id]));
+
+    // Create Roles
+    console.log("👤 Creating roles...");
+    const roleData = [
+      { name: "Admin", description: "Full system access with all permissions", isSystem: true },
+      { name: "Employee", description: "Standard employee access with task management", isSystem: true },
+      { name: "Customer", description: "Customer access with limited permissions", isSystem: true },
+    ];
+
+    const createdRoles = await db.insert(roles).values(roleData).returning();
+
+    // Create a map for easy role lookup
+    const roleMap = new Map(createdRoles.map(r => [r.name, r.id]));
+
+    // Assign Permissions to Roles
+    console.log("🔗 Assigning permissions to roles...");
+
+    // Admin role - all permissions
+    const adminPermissions = createdPermissions.map(p => ({
+      roleId: roleMap.get("Admin")!,
+      permissionId: p.id,
+    }));
+
+    // Employee role - specific permissions
+    const employeePermissionNames = [
+      // All view permissions
+      "view_dashboard", "view_tasks", "view_chats", "view_files", "view_companies",
+      "view_users", "view_teams", "view_audit_logs", "view_settings",
+      // Task permissions
+      "create_task", "read_task", "update_task", "submit_task", "complete_task", "assign_task",
+      // File permissions (all except delete)
+      "upload_file", "download_file", "approve_file", "reject_file",
+      // User permissions
+      "read_user", "invite_user",
+      // Company permissions
+      "read_company", "create_company",
+      // Team permissions (all)
+      "create_team", "read_team", "update_team", "delete_team", "assign_team_member", "remove_team_member",
+      // Audit permissions
+      "read_audit_logs",
+    ];
+
+    const employeePermissions = employeePermissionNames.map(name => ({
+      roleId: roleMap.get("Employee")!,
+      permissionId: permissionMap.get(name)!,
+    }));
+
+    // Customer role - limited permissions
+    const customerPermissionNames = [
+      // View permissions (limited)
+      "view_dashboard", "view_tasks", "view_chats", "view_files",
+      // Task permissions (limited)
+      "create_task", "read_task", "submit_task",
+      // File permissions (own files only)
+      "upload_file", "download_file",
+      // Company permissions
+      "create_company",
+    ];
+
+    const customerPermissions = customerPermissionNames.map(name => ({
+      roleId: roleMap.get("Customer")!,
+      permissionId: permissionMap.get(name)!,
+    }));
+
+    // Insert all role permissions
+    await db.insert(rolePermissions).values([
+      ...adminPermissions,
+      ...employeePermissions,
+      ...customerPermissions,
+    ]);
+
+    console.log(`✅ Created ${createdPermissions.length} permissions`);
+    console.log(`✅ Created ${createdRoles.length} roles`);
+    console.log(`✅ Assigned permissions to roles`);
 
     // Create Companies
     console.log("🏢 Creating companies...");
@@ -97,6 +248,21 @@ async function seed() {
         },
       ])
       .returning();
+
+    // Assign Roles to Users
+    console.log("🎭 Assigning roles to users...");
+    const userRoleData = [
+      // Employees get Employee role
+      { userId: employee1.id, roleId: roleMap.get("Employee")!, assignedBy: null },
+      { userId: employee2.id, roleId: roleMap.get("Employee")!, assignedBy: null },
+      // Customers get Customer role
+      { userId: customer1.id, roleId: roleMap.get("Customer")!, assignedBy: employee1.id },
+      { userId: customer2.id, roleId: roleMap.get("Customer")!, assignedBy: employee1.id },
+      { userId: customer3.id, roleId: roleMap.get("Customer")!, assignedBy: employee2.id },
+    ];
+
+    await db.insert(userRoles).values(userRoleData);
+    console.log(`✅ Assigned roles to ${userRoleData.length} users`);
 
     // Create Tasks with calculated traffic lights
     console.log("📋 Creating tasks...");
@@ -442,12 +608,17 @@ async function seed() {
     await db.insert(files).values(fileData);
 
     console.log("✅ Seed completed successfully!");
+    console.log(`Created ${createdPermissions.length} permissions`);
+    console.log(`Created ${createdRoles.length} roles`);
     console.log(`Created ${createdTasks.length} tasks`);
     console.log(`Created ${commentData.length} comments`);
     console.log(`Created ${fileData.length} file records`);
 
     // Display summary
     console.log("\n📊 Summary:");
+    const categories = new Set(createdPermissions.map(p => p.category));
+    console.log("Permissions:", createdPermissions.length, "across", Array.from(categories).length, "categories");
+    console.log("Roles:", createdRoles.map(r => r.name).join(", "));
     console.log("Companies:", [company1.name, company2.name, company3.name].join(", "));
     console.log("Users:", [employee1.name, employee2.name, customer1.name, customer2.name, customer3.name].join(", "));
   } catch (error) {

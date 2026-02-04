@@ -168,9 +168,20 @@ export async function compressImage(file: File, maxWidth = 2048, quality = 0.85)
 export function formatFileSize(bytes: number | null | undefined): string {
   if (!bytes) return "Unbekannt";
 
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  // Bytes
+  if (bytes < 1024) return `${bytes} Bytes`;
+
+  // Kilobytes
+  const kb = bytes / 1024;
+  if (kb < 1000) return `${Math.round(kb)} KB`;
+
+  // Megabytes
+  const mb = kb / 1024;
+  if (mb < 1000) return `${mb.toFixed(2)} MB`;
+
+  // Gigabytes
+  const gb = mb / 1024;
+  return `${gb.toFixed(2)} GB`;
 }
 
 /**

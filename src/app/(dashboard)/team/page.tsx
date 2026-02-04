@@ -66,6 +66,7 @@ function TeamContent() {
 
   const fetchTeam = async () => {
     try {
+      setLoading(true);
       const response = await fetch("/api/team");
       if (response.ok) {
         const data = await response.json();
