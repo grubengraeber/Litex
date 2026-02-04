@@ -3,12 +3,14 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MessageSquare, Building2, Search } from "lucide-react";
+import { MessageSquare, Building2, Search, Plus } from "lucide-react";
 import { TRAFFIC_LIGHT_CONFIG, TASK_STATUS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChatView } from "@/components/chats/chat-view";
+import { CreateChatDialog } from "@/components/chats/create-chat-dialog";
 import {
   Sheet,
   SheetContent,
@@ -65,6 +67,7 @@ function ChatsContent() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [createChatOpen, setCreateChatOpen] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -158,7 +161,17 @@ function ChatsContent() {
       <div className="w-full md:w-96 border-r border-slate-200 flex flex-col bg-white">
         {/* Header */}
         <div className="p-4 border-b border-slate-200">
-          <h1 className="text-xl font-bold text-slate-900 mb-3">Chats</h1>
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-xl font-bold text-slate-900">Chats</h1>
+            <Button
+              size="sm"
+              onClick={() => setCreateChatOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Neu
+            </Button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
@@ -308,6 +321,12 @@ function ChatsContent() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Create Chat Dialog */}
+      <CreateChatDialog
+        open={createChatOpen}
+        onOpenChange={setCreateChatOpen}
+      />
     </div>
   );
 }

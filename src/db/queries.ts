@@ -96,6 +96,39 @@ export async function getTaskById(taskId: string) {
   });
 }
 
+export async function getTasksWithoutComments(
+  userId: string,
+  userRole: "customer" | "employee",
+  userCompanyId: string | null,
+  filters: { limit?: number } = {}
+) {
+  if (!db) throw new Error("Database not configured");
+
+  const conditions = [];
+
+  // Role-based filtering
+  if (userRole === "customer" && userCompanyId) {
+    conditions.push(eq(tasks.companyId, userCompanyId));
+  }
+
+  // Get all tasks with their comment counts
+  const result = await db.query.tasks.findMany({
+    where: conditions.length > 0 ? and(...conditions) : undefined,
+    with: {
+      company: true,
+      comments: true,
+    },
+    orderBy: [desc(tasks.createdAt)],
+    limit: filters.limit || 100,
+  });
+
+  // Filter to only tasks without comments
+  return result
+    .filter(task => !task.comments || task.comments.length === 0)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    .map(({ comments, ...task }) => task);
+}
+
 export async function createTask(data: {
   companyId: string;
   bmdBookingId?: string;
@@ -220,10 +253,21 @@ export async function getAllCompanies(includeInactive = false) {
 
   const conditions = includeInactive ? undefined : eq(companies.isActive, true);
 
-  return db.query.companies.findMany({
+  const result = await db.query.companies.findMany({
     where: conditions,
     orderBy: [asc(companies.name)],
+    with: {
+      users: true,
+      tasks: true,
+    },
   });
+
+  return result.map((company) => ({
+    ...company,
+    userCount: company.users.length,
+    taskCount: company.tasks.length,
+    openTaskCount: company.tasks.filter((task) => task.status === "open").length,
+  }));
 }
 
 export async function getCompanyById(companyId: string) {
