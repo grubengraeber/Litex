@@ -64,21 +64,21 @@ function TeamContent() {
     localStorage.setItem("team-view", newView);
   };
 
-  useEffect(() => {
-    async function fetchTeam() {
-      try {
-        const response = await fetch("/api/team");
-        if (response.ok) {
-          const data = await response.json();
-          setTeamMembers(data);
-        }
-      } catch (error) {
-        console.error("Error fetching team:", error);
-      } finally {
-        setLoading(false);
+  const fetchTeam = async () => {
+    try {
+      const response = await fetch("/api/team");
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMembers(data);
       }
+    } catch (error) {
+      console.error("Error fetching team:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchTeam();
   }, []);
 
