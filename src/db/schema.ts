@@ -2,10 +2,11 @@ import { pgTable, text, timestamp, uuid, pgEnum, boolean, decimal, date, integer
 import { relations } from "drizzle-orm";
 
 // Enums
-export const roleEnum = pgEnum("role", ["customer", "employee"]);
+export const roleEnum = pgEnum("role", ["admin", "employee", "customer"]);
 export const userStatusEnum = pgEnum("user_status", ["pending", "active", "disabled"]);
 export const taskStatusEnum = pgEnum("task_status", ["open", "submitted", "completed"]);
 export const trafficLightEnum = pgEnum("traffic_light", ["green", "yellow", "red"]);
+export const taskTypeEnum = pgEnum("task_type", ["general", "booking"]);
 export const notificationTypeEnum = pgEnum("notification_type", [
   "new_message",
   "task_submitted",
@@ -130,6 +131,7 @@ export const companies = pgTable("companies", {
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   companyId: uuid("company_id").notNull().references(() => companies.id),
+  taskType: taskTypeEnum("task_type").default("general"),
   bmdBookingId: text("bmd_booking_id").unique(),
   bookingText: text("booking_text"),
   amount: decimal("amount", { precision: 12, scale: 2 }),
@@ -137,7 +139,7 @@ export const tasks = pgTable("tasks", {
   bookingDate: date("booking_date"),
   period: text("period"), // YYYY-MM
   status: taskStatusEnum("status").default("open"),
-  trafficLight: trafficLightEnum("traffic_light").default("green"),
+  trafficLight: trafficLightEnum("traffic_light").default("yellow"),
   dueDate: date("due_date"),
   completedAt: timestamp("completed_at", { mode: "date" }),
   completedBy: text("completed_by").references(() => users.id),
@@ -172,6 +174,21 @@ export const comments = pgTable("comments", {
   userId: text("user_id").notNull().references(() => users.id),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+// Sync Jobs - Track import/sync operations
+export const syncJobs = pgTable("sync_jobs", {
+  id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  source: text("source").notNull(), // "csv_import", "finmatics", "bmd"
+  status: text("status").notNull().default("running"), // "running", "completed", "failed"
+  recordsProcessed: integer("records_processed").default(0),
+  recordsCreated: integer("records_created").default(0),
+  recordsUpdated: integer("records_updated").default(0),
+  recordsFailed: integer("records_failed").default(0),
+  errorLog: text("error_log"), // JSON array of error messages
+  startedAt: timestamp("started_at", { mode: "date" }).defaultNow(),
+  completedAt: timestamp("completed_at", { mode: "date" }),
+  triggeredBy: text("triggered_by").references(() => users.id),
 });
 
 // Relations
@@ -312,4 +329,9 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
 // Audit Logs Relations
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, { fields: [auditLogs.userId], references: [users.id] }),
+}));
+
+// Sync Jobs Relations
+export const syncJobsRelations = relations(syncJobs, ({ one }) => ({
+  triggeredByUser: one(users, { fields: [syncJobs.triggeredBy], references: [users.id] }),
 }));

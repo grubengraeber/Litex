@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { finmaticsClient } from "@/lib/finmatics/client";
+import { syncProcessedDocuments, getFinmaticsStatus } from "@/lib/finmatics/service";
+import { createSyncJob, completeSyncJob } from "@/db/queries";
 
-// Validate cron secret
 function validateCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -13,100 +15,52 @@ function validateCronSecret(request: NextRequest): boolean {
   return authHeader === `Bearer ${cronSecret}`;
 }
 
-// TODO: Implement actual Finmatics API integration
-// This is a placeholder structure for the Finmatics data fetch cron job
-//
-// Integration steps:
-// 1. Check if Finmatics supports webhooks (preferred method)
-// 2. If webhooks are supported, register webhook endpoints
-// 3. If not, implement polling mechanism here
-// 4. Fetch document processing status
-// 5. Update task files with Finmatics processing results
-// 6. Handle document approval/rejection workflows
-
-interface FinmaticsApiConfig {
-  apiUrl: string;
-  apiKey: string;
-  supportsWebhooks: boolean;
-}
-
-function getFinmaticsConfig(): FinmaticsApiConfig {
-  const apiUrl = process.env.FINMATICS_API_URL || "";
-  const apiKey = process.env.FINMATICS_API_KEY || "";
-  const supportsWebhooks = process.env.FINMATICS_SUPPORTS_WEBHOOKS === "true";
-
-  return {
-    apiUrl,
-    apiKey,
-    supportsWebhooks,
-  };
-}
-
-async function fetchFinmaticsData(config: FinmaticsApiConfig) {
-  if (!config.apiUrl || !config.apiKey) {
-    throw new Error("Finmatics API configuration is incomplete");
+// POST /api/cron/finmatics - Sync documents from Finmatics
+export async function POST(request: NextRequest) {
+  if (!validateCronSecret(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // TODO: Implement actual API call to Finmatics
-  // Example structure:
-  // const response = await fetch(`${config.apiUrl}/documents`, {
-  //   headers: {
-  //     'Authorization': `Bearer ${config.apiKey}`,
-  //   },
-  // });
-  //
-  // const documents = await response.json();
-  //
-  // Process documents and update database:
-  // - Update file status based on Finmatics processing
-  // - Create notifications for completed processing
-  // - Link processed documents to tasks
-
-  console.log("Finmatics data fetch would execute here");
-
-  return {
-    processed: 0,
-    updated: 0,
-    errors: [] as string[],
-  };
-}
-
-// POST /api/cron/finmatics - Fetch data from Finmatics
-export async function POST(request: NextRequest) {
-  // Validate cron secret
-  if (!validateCronSecret(request)) {
+  if (!finmaticsClient.isConfigured()) {
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
+      { error: "Finmatics not configured" },
+      { status: 503 }
     );
   }
 
+  const syncJob = await createSyncJob({ source: "finmatics", triggeredBy: "cron" });
+
   try {
-    const config = getFinmaticsConfig();
+    const result = await syncProcessedDocuments();
 
-    // Check if webhooks are supported
-    if (config.supportsWebhooks) {
-      return NextResponse.json({
-        success: true,
-        message: "Finmatics uses webhooks. No polling needed.",
-        webhooksEnabled: true,
-      });
-    }
-
-    // If no webhooks, perform polling
-    const results = await fetchFinmaticsData(config);
+    await completeSyncJob(syncJob.id, {
+      status: result.errors.length > 0 ? "completed_with_errors" : "completed",
+      recordsProcessed: result.processed,
+      recordsCreated: result.created,
+      recordsUpdated: result.updated,
+      recordsFailed: result.errors.length,
+      errorLog: result.errors.length > 0 ? result.errors.join("\n") : null,
+    });
 
     return NextResponse.json({
       success: true,
-      ...results,
-      webhooksEnabled: false,
+      syncJobId: syncJob.id,
+      ...result,
     });
   } catch (error) {
-    console.error("Finmatics fetch error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
 
+    await completeSyncJob(syncJob.id, {
+      status: "failed",
+      recordsProcessed: 0,
+      recordsCreated: 0,
+      recordsUpdated: 0,
+      recordsFailed: 0,
+      errorLog: message,
+    });
+
     return NextResponse.json(
-      { error: "Fehler beim Abrufen der Finmatics-Daten", details: message },
+      { error: "Finmatics sync failed", details: message },
       { status: 500 }
     );
   }
@@ -115,19 +69,15 @@ export async function POST(request: NextRequest) {
 // GET /api/cron/finmatics - Health check
 export async function GET(request: NextRequest) {
   if (!validateCronSecret(request)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const config = getFinmaticsConfig();
+  const status = await getFinmaticsStatus();
 
   return NextResponse.json({
     status: "ok",
     endpoint: "finmatics",
-    configured: !!(config.apiUrl && config.apiKey),
-    supportsWebhooks: config.supportsWebhooks,
+    ...status,
     timestamp: new Date().toISOString(),
   });
 }

@@ -41,13 +41,13 @@ export function CompaniesDataTable({
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-            <Building2 className="w-4 h-4 text-slate-600" />
+          <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+            <Building2 className="w-4 h-4 text-muted-foreground" />
           </div>
           <div>
             <div className="font-medium">{row.getValue("name")}</div>
             {row.original.bmdId && (
-              <div className="text-sm text-slate-500">{row.original.bmdId}</div>
+              <div className="text-sm text-muted-foreground">{row.original.bmdId}</div>
             )}
           </div>
         </div>
@@ -84,8 +84,8 @@ export function CompaniesDataTable({
       cell: ({ row }) => {
         const count = row.original.userCount ?? 0;
         return (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Users className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="w-4 h-4 text-muted-foreground" />
             <span>{count}</span>
           </div>
         );
@@ -101,8 +101,8 @@ export function CompaniesDataTable({
         const total = row.original.taskCount ?? 0;
         const open = row.original.openTaskCount ?? 0;
         return (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <FileText className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <FileText className="w-4 h-4 text-muted-foreground" />
             <span>{total}</span>
             {open > 0 && (
               <span className="text-xs text-orange-600 font-medium">

@@ -16,6 +16,8 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 
 interface TaskWithComments {
   id: string;
@@ -62,6 +64,7 @@ function ChatsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedTaskId = searchParams.get("task");
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [tasks, setTasks] = useState<TaskWithComments[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,10 +136,24 @@ function ChatsContent() {
       task.company.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Chats...</div>
+        <div className="text-muted-foreground">Lade Chats...</div>
+      </div>
+    );
+  }
+
+  if (!hasPermission(PERMISSIONS.VIEW_CHATS)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center px-4">
+        <MessageSquare className="w-16 h-16 text-muted-foreground mb-4" />
+        <h2 className="text-xl font-semibold text-foreground mb-2">
+          Kein Zugriff
+        </h2>
+        <p className="text-muted-foreground">
+          Sie haben keine Berechtigung, den Chat-Bereich anzuzeigen.
+        </p>
       </div>
     );
   }
@@ -144,11 +161,11 @@ function ChatsContent() {
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
-        <MessageSquare className="w-16 h-16 text-slate-300 mb-4" />
-        <h2 className="text-xl font-semibold text-slate-700 mb-2">
+        <MessageSquare className="w-16 h-16 text-muted-foreground mb-4" />
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Keine Chats vorhanden
         </h2>
-        <p className="text-slate-500">
+        <p className="text-muted-foreground">
           Es gibt noch keine Kommentare zu Aufgaben.
         </p>
       </div>
@@ -158,22 +175,22 @@ function ChatsContent() {
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-0 -m-6">
       {/* Left Sidebar - Chat List */}
-      <div className="w-full md:w-96 border-r border-slate-200 flex flex-col bg-white">
+      <div className="w-full md:w-96 border-r border-border flex flex-col bg-card">
         {/* Header */}
-        <div className="p-4 border-b border-slate-200">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-bold text-slate-900">Chats</h1>
+            <h1 className="text-xl font-bold text-foreground">Chats</h1>
             <Button
               size="sm"
               onClick={() => setCreateChatOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700"
+             
             >
               <Plus className="w-4 h-4 mr-1" />
               Neu
             </Button>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Chats durchsuchen..."
@@ -212,13 +229,13 @@ function ChatsContent() {
                   }
                 }}
                 className={cn(
-                  "p-4 border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50",
-                  isSelected && "bg-blue-50 border-l-4 border-l-blue-600"
+                  "p-4 border-b border-border cursor-pointer transition-colors hover:bg-muted",
+                  isSelected && "bg-primary/5 border-l-4 border-l-primary"
                 )}
               >
                 <div className="flex gap-3">
                   <Avatar className="w-10 h-10 shrink-0">
-                    <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -228,25 +245,25 @@ function ChatsContent() {
                       <h3
                         className={cn(
                           "font-medium truncate text-sm",
-                          isSelected ? "text-blue-900" : "text-slate-900"
+                          isSelected ? "text-foreground" : "text-foreground"
                         )}
                       >
                         {task.bookingText || "Keine Beschreibung"}
                       </h3>
                       {task.lastComment && (
-                        <span className="text-xs text-slate-400 shrink-0">
+                        <span className="text-xs text-muted-foreground shrink-0">
                           {formatRelativeTime(task.lastComment.createdAt)}
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                       <Building2 className="w-3 h-3" />
                       <span className="truncate">{task.company.name}</span>
                     </div>
 
                     {task.lastComment && (
-                      <p className="text-sm text-slate-600 line-clamp-1 mb-1">
+                      <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
                         {task.lastComment.content}
                       </p>
                     )}
@@ -261,7 +278,7 @@ function ChatsContent() {
                       >
                         {statusConfig.label}
                       </Badge>
-                      <div className="flex items-center gap-1 text-xs text-slate-400">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <MessageSquare className="w-3 h-3" />
                         <span>{task.commentCount}</span>
                       </div>
@@ -275,22 +292,22 @@ function ChatsContent() {
       </div>
 
       {/* Right Side - Chat Content (Desktop) */}
-      <div className="flex-1 bg-slate-50 hidden md:flex flex-col">
+      <div className="flex-1 bg-muted hidden md:flex flex-col">
         {selectedTaskId ? (
           <Suspense fallback={
             <div className="flex items-center justify-center h-full">
-              <div className="text-slate-500">Lade Chat...</div>
+              <div className="text-muted-foreground">Lade Chat...</div>
             </div>
           }>
             <ChatView taskId={selectedTaskId} />
           </Suspense>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <MessageSquare className="w-16 h-16 text-slate-300 mb-4" />
-            <h2 className="text-xl font-semibold text-slate-700 mb-2">
+            <MessageSquare className="w-16 h-16 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">
               Wählen Sie einen Chat
             </h2>
-            <p className="text-slate-500">
+            <p className="text-muted-foreground">
               Klicken Sie auf eine Unterhaltung, um die Nachrichten anzuzeigen.
             </p>
           </div>
@@ -303,7 +320,7 @@ function ChatsContent() {
           side="bottom"
           className="h-[90vh] p-0 md:hidden"
         >
-          <div className="flex items-center justify-between p-4 border-b border-slate-200 pr-16">
+          <div className="flex items-center justify-between p-4 border-b border-border pr-16">
             <SheetTitle className="text-lg font-semibold">
               Chat
             </SheetTitle>
@@ -312,7 +329,7 @@ function ChatsContent() {
             <div className="h-[calc(90vh-4rem)] overflow-hidden">
               <Suspense fallback={
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-slate-500">Lade Chat...</div>
+                  <div className="text-muted-foreground">Lade Chat...</div>
                 </div>
               }>
                 <ChatView taskId={selectedTaskId} />
@@ -335,7 +352,7 @@ export default function ChatsPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Chats...</div>
+        <div className="text-muted-foreground">Lade Chats...</div>
       </div>
     }>
       <ChatsContent />

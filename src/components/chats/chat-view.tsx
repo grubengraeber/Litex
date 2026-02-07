@@ -308,7 +308,7 @@ export function ChatView({ taskId }: { taskId: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Chat...</div>
+        <div className="text-muted-foreground">Lade Chat...</div>
       </div>
     );
   }
@@ -316,7 +316,7 @@ export function ChatView({ taskId }: { taskId: string }) {
   if (!task) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <h2 className="text-xl font-semibold text-slate-700">Aufgabe nicht gefunden</h2>
+        <h2 className="text-xl font-semibold text-foreground">Aufgabe nicht gefunden</h2>
       </div>
     );
   }
@@ -327,11 +327,11 @@ export function ChatView({ taskId }: { taskId: string }) {
   return (
     <div className="h-full flex flex-col">
       {/* Header with task info */}
-      <div className="p-4 border-b border-slate-200 bg-white">
+      <div className="p-4 border-b border-border bg-card">
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <span className={`w-3 h-3 rounded-full ${trafficConfig?.color || "bg-green-500"}`} />
-            <Badge className={`${statusConfig?.color || "bg-slate-100 text-slate-700"} border-0 text-xs`}>
+            <Badge className={`${statusConfig?.color || "bg-muted text-foreground"} border-0 text-xs`}>
               {statusConfig?.label || "Unbekannt"}
             </Badge>
           </div>
@@ -342,10 +342,10 @@ export function ChatView({ taskId }: { taskId: string }) {
             </Button>
           </Link>
         </div>
-        <h2 className="font-semibold text-slate-900 mb-1 line-clamp-1">
+        <h2 className="font-semibold text-foreground mb-1 line-clamp-1">
           {task.bookingText || "Keine Beschreibung"}
         </h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Building2 className="w-3 h-3" />
             <span>{task.company.name}</span>

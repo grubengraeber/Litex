@@ -1,35 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTasksNeedingTrafficLightUpdate, updateTaskTrafficLight } from "@/db/queries";
+import { calculateTrafficLight } from "@/lib/constants";
 
 // Validate cron secret
 function validateCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  
+
   if (!cronSecret) {
     console.error("CRON_SECRET not configured");
     return false;
   }
-  
-  return authHeader === `Bearer ${cronSecret}`;
-}
 
-// Calculate traffic light based on due date
-function calculateTrafficLight(dueDate: string): "green" | "yellow" | "red" {
-  const due = new Date(dueDate);
-  const now = new Date();
-  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) {
-    // Overdue
-    return "red";
-  } else if (diffDays <= 3) {
-    // Due within 3 days
-    return "yellow";
-  } else {
-    // More than 3 days
-    return "green";
-  }
+  return authHeader === `Bearer ${cronSecret}`;
 }
 
 // POST /api/cron/deadlines - Update traffic lights based on due dates
@@ -57,9 +40,7 @@ export async function POST(request: NextRequest) {
 
     for (const task of tasks) {
       try {
-        if (!task.dueDate) continue;
-        
-        const newTrafficLight = calculateTrafficLight(task.dueDate);
+        const newTrafficLight = calculateTrafficLight(task.status as "open" | "submitted" | "completed", task.dueDate);
         
         // Only update if changed
         if (task.trafficLight !== newTrafficLight) {

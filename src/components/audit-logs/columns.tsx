@@ -25,11 +25,11 @@ export interface AuditLog {
 
 const actionColors: Record<string, string> = {
   CREATE: "bg-green-100 text-green-800 border-green-200",
-  READ: "bg-blue-100 text-blue-800 border-blue-200",
-  UPDATE: "bg-blue-100 text-blue-800 border-blue-200",
+  READ: "bg-primary/10 text-foreground border-primary/20",
+  UPDATE: "bg-primary/10 text-foreground border-primary/20",
   DELETE: "bg-red-100 text-red-800 border-red-200",
   LOGIN: "bg-purple-100 text-purple-800 border-purple-200",
-  LOGOUT: "bg-slate-100 text-slate-800 border-slate-200",
+  LOGOUT: "bg-muted text-foreground border-border",
   UPLOAD: "bg-yellow-100 text-yellow-800 border-yellow-200",
   DOWNLOAD: "bg-orange-100 text-orange-800 border-orange-200",
   APPROVE: "bg-green-100 text-green-800 border-green-200",
@@ -97,7 +97,7 @@ export const columns: ColumnDef<AuditLog>[] = [
               locale: de,
             })}
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-muted-foreground">
             {date.toLocaleString("de-DE")}
           </div>
         </div>
@@ -125,7 +125,7 @@ export const columns: ColumnDef<AuditLog>[] = [
         <div className="text-sm">
           <div className="font-medium">{email}</div>
           {userId && (
-            <div className="text-xs text-slate-500 truncate max-w-[200px]">
+            <div className="text-xs text-muted-foreground truncate max-w-[200px]">
               ID: {userId}
             </div>
           )}
@@ -183,7 +183,7 @@ export const columns: ColumnDef<AuditLog>[] = [
         <div className="text-sm">
           <div className="font-medium capitalize">{entityType}</div>
           {entityId && (
-            <div className="text-xs text-slate-500 truncate max-w-[150px]">
+            <div className="text-xs text-muted-foreground truncate max-w-[150px]">
               {entityId}
             </div>
           )}
@@ -199,7 +199,7 @@ export const columns: ColumnDef<AuditLog>[] = [
     header: "IP-Adresse",
     cell: ({ row }) => {
       const ip = row.getValue("userIpAddress") as string | null;
-      return <div className="text-sm text-slate-600">{ip || "-"}</div>;
+      return <div className="text-sm text-muted-foreground">{ip || "-"}</div>;
     },
   },
   {

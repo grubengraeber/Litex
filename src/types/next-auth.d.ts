@@ -2,7 +2,7 @@ import "next-auth";
 
 declare module "next-auth" {
   interface User {
-    role?: "customer" | "employee" | null;
+    role?: "admin" | "employee" | "customer" | null;
     companyId?: string | null;
     status?: "pending" | "active" | "disabled" | null;
   }
@@ -10,7 +10,7 @@ declare module "next-auth" {
   interface Session {
     user: User & {
       id: string;
-      role?: "customer" | "employee" | null;
+      role?: "admin" | "employee" | "customer" | null;
       companyId?: string | null;
       status?: "pending" | "active" | "disabled" | null;
     };
@@ -19,7 +19,7 @@ declare module "next-auth" {
 
 declare module "@auth/core/adapters" {
   interface AdapterUser {
-    role?: "customer" | "employee" | null;
+    role?: "admin" | "employee" | "customer" | null;
     companyId?: string | null;
     status?: "pending" | "active" | "disabled" | null;
   }

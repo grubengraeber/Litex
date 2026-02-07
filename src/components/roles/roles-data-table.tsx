@@ -49,7 +49,7 @@ export function RolesDataTable({
         <ColumnHeader column={column} title="Beschreibung" filterType="text" />
       ),
       cell: ({ row }) => (
-        <div className="text-slate-600 max-w-md truncate">
+        <div className="text-muted-foreground max-w-md truncate">
           {row.getValue("description") || "-"}
         </div>
       ),
@@ -72,7 +72,7 @@ export function RolesDataTable({
               </Badge>
             )}
             {role.permissions.length === 0 && (
-              <span className="text-sm text-slate-400">Keine</span>
+              <span className="text-sm text-muted-foreground">Keine</span>
             )}
           </div>
         );

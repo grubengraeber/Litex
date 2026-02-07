@@ -65,7 +65,7 @@ export function TeamDataTable({
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
               <AvatarImage src={member.image || undefined} />
-              <AvatarFallback className="bg-blue-100 text-blue-600">
+              <AvatarFallback className="bg-primary/10 text-primary">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -73,7 +73,7 @@ export function TeamDataTable({
               <div className="font-medium">
                 {member.name || member.email.split("@")[0]}
               </div>
-              <div className="text-sm text-slate-500">{member.email}</div>
+              <div className="text-sm text-muted-foreground">{member.email}</div>
             </div>
           </div>
         );
@@ -123,7 +123,7 @@ export function TeamDataTable({
                 </Badge>
               ))
             ) : (
-              <span className="text-sm text-slate-400">Keine Rollen</span>
+              <span className="text-sm text-muted-foreground">Keine Rollen</span>
             )}
           </div>
         );
@@ -137,7 +137,7 @@ export function TeamDataTable({
       cell: ({ row }) => {
         const date = row.getValue("createdAt") as string;
         return (
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-muted-foreground">
             {formatDistanceToNow(new Date(date), {
               addSuffix: true,
               locale: de,

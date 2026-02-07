@@ -40,10 +40,10 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
           <Avatar className="h-8 w-8 cursor-pointer">
             <AvatarImage src={session?.user?.image || undefined} alt={session?.user?.name || "Benutzer"} />
-            <AvatarFallback className="bg-blue-100 text-blue-600 text-xs font-medium">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -55,7 +55,7 @@ export function UserMenu() {
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={session?.user?.image || undefined} />
-              <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -63,11 +63,11 @@ export function UserMenu() {
               <p className="text-sm font-medium truncate">
                 {session?.user?.name || "Benutzer"}
               </p>
-              <p className="text-xs text-slate-500 truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {session?.user?.email}
               </p>
               {session?.user?.role && (
-                <span className="text-[10px] text-slate-400 capitalize">
+                <span className="text-[10px] text-muted-foreground capitalize">
                   {session.user.role === "employee" ? "Mitarbeiter" : "Kunde"}
                 </span>
               )}

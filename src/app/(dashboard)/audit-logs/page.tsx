@@ -104,11 +104,11 @@ export default function AuditLogsPage() {
       <div className="flex items-center justify-center h-full">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
-            <ShieldAlert className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">
+            <ShieldAlert className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">
               Keine Berechtigung
             </h2>
-            <p className="text-slate-500">
+            <p className="text-muted-foreground">
               Du hast keine Berechtigung, um Audit Logs anzuzeigen. Diese
               Funktion ist nur für Administratoren verfügbar.
             </p>
@@ -121,7 +121,7 @@ export default function AuditLogsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Audit Logs...</div>
+        <div className="text-muted-foreground">Lade Audit Logs...</div>
       </div>
     );
   }
@@ -129,8 +129,8 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
-        <p className="text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Audit Logs</h1>
+        <p className="text-muted-foreground mt-1">
           Vollständiger Aktivitätsverlauf aller Benutzeraktionen im System
         </p>
       </div>

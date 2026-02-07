@@ -153,7 +153,7 @@ export function CompanyDialog({
                 setFormData((prev) => ({ ...prev, bmdId: e.target.value }))
               }
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Eindeutige ID für die BMD-Integration
             </p>
           </div>
@@ -172,7 +172,7 @@ export function CompanyDialog({
                 }))
               }
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Eindeutige ID für die Finmatics-Integration
             </p>
           </div>

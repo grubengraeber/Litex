@@ -229,7 +229,7 @@ export default function RolesPage() {
   if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Laden...</div>
+        <div className="text-muted-foreground">Laden...</div>
       </div>
     );
   }
@@ -250,15 +250,15 @@ export default function RolesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Rollen-Verwaltung</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Rollen-Verwaltung</h1>
+          <p className="text-muted-foreground mt-1">
             {filteredRoles.length} {filteredRoles.length === 1 ? "Rolle" : "Rollen"}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <ViewToggle view={view} onViewChange={handleViewChange} />
           {canCreateRole && (
-            <Button onClick={openCreateDialog} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={openCreateDialog}>
               <Plus className="w-4 h-4 mr-2" />
               Neue Rolle
             </Button>
@@ -268,7 +268,7 @@ export default function RolesPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Rollen durchsuchen..."
@@ -295,13 +295,13 @@ export default function RolesPage() {
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <span className="text-2xl">🛡️</span>
           </div>
-          <h3 className="text-lg font-medium text-slate-700">
+          <h3 className="text-lg font-medium text-foreground">
             Keine Rollen gefunden
           </h3>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             {searchQuery
               ? "Versuchen Sie einen anderen Suchbegriff."
               : "Es wurden noch keine Rollen definiert."}
@@ -383,7 +383,7 @@ export default function RolesPage() {
                               <Label className="text-sm font-normal">
                                 {perm.name}
                                 {perm.description && (
-                                  <span className="text-slate-500 ml-2">
+                                  <span className="text-muted-foreground ml-2">
                                     - {perm.description}
                                   </span>
                                 )}

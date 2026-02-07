@@ -109,7 +109,7 @@ export function TasksTable({ tasks }: TasksTableProps) {
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <button
       onClick={() => handleSort(field)}
-      className="flex items-center gap-1 hover:text-slate-900"
+      className="flex items-center gap-1 hover:text-foreground"
     >
       {children}
       <ArrowUpDown className="w-3 h-3" />
@@ -147,7 +147,7 @@ export function TasksTable({ tasks }: TasksTableProps) {
       <TableBody>
         {sortedTasks.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={8} className="text-center text-slate-500 py-8">
+            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
               Keine Aufgaben gefunden
             </TableCell>
           </TableRow>
@@ -159,7 +159,7 @@ export function TasksTable({ tasks }: TasksTableProps) {
             return (
               <TableRow
                 key={task.id}
-                className="cursor-pointer hover:bg-slate-50"
+                className="cursor-pointer hover:bg-muted"
                 onClick={() => router.push(`/tasks/${task.id}`)}
               >
                 <TableCell>
@@ -180,7 +180,7 @@ export function TasksTable({ tasks }: TasksTableProps) {
                         {task.bookingText || "Keine Beschreibung"}
                       </div>
                       {task.bmdBookingId && (
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-muted-foreground">
                           BMD: {task.bmdBookingId}
                         </div>
                       )}

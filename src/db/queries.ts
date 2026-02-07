@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { tasks, comments, files, companies, users } from "@/db/schema";
-import { eq, and, desc, asc, or, sql } from "drizzle-orm";
+import { tasks, comments, files, companies, users, syncJobs } from "@/db/schema";
+import { eq, and, desc, asc, or, sql, ne } from "drizzle-orm";
 
 // ==================== TASKS ====================
 
@@ -8,16 +8,18 @@ export interface TaskFilters {
   companyId?: string;
   status?: "open" | "submitted" | "completed";
   trafficLight?: "green" | "yellow" | "red";
+  taskType?: "general" | "booking";
   period?: string;
   search?: string;
   limit?: number;
   offset?: number;
   includeComments?: boolean;
+  excludeCompleted?: boolean;
 }
 
 export async function getTasksForUser(
   userId: string,
-  userRole: "customer" | "employee",
+  userRole: "admin" | "employee" | "customer",
   userCompanyId: string | null,
   filters: TaskFilters = {}
 ) {
@@ -35,8 +37,14 @@ export async function getTasksForUser(
   }
 
   // Additional filters
+  if (filters.taskType) {
+    conditions.push(eq(tasks.taskType, filters.taskType));
+  }
   if (filters.status) {
     conditions.push(eq(tasks.status, filters.status));
+  }
+  if (filters.excludeCompleted) {
+    conditions.push(ne(tasks.status, "completed"));
   }
   if (filters.trafficLight) {
     conditions.push(eq(tasks.trafficLight, filters.trafficLight));
@@ -98,7 +106,7 @@ export async function getTaskById(taskId: string) {
 
 export async function getTasksWithoutComments(
   userId: string,
-  userRole: "customer" | "employee",
+  userRole: "admin" | "employee" | "customer",
   userCompanyId: string | null,
   filters: { limit?: number } = {}
 ) {
@@ -131,6 +139,7 @@ export async function getTasksWithoutComments(
 
 export async function createTask(data: {
   companyId: string;
+  taskType?: "general" | "booking";
   bmdBookingId?: string;
   bookingText?: string;
   amount?: string;
@@ -350,7 +359,7 @@ export async function getAllUsers() {
 export async function createUser(data: {
   email: string;
   name?: string;
-  role?: "customer" | "employee";
+  role?: "admin" | "employee" | "customer";
   companyId?: string;
   invitedBy?: string;
 }) {
@@ -369,7 +378,7 @@ export async function updateUser(
   userId: string,
   data: {
     name?: string;
-    role?: "customer" | "employee";
+    role?: "admin" | "employee" | "customer";
     companyId?: string | null;
     status?: "pending" | "active" | "disabled";
   }
@@ -418,6 +427,7 @@ export async function upsertTaskFromImport(data: {
   bookingDate?: string;
   period?: string;
   dueDate?: string;
+  taskType?: "general" | "booking";
 }) {
   if (!db) throw new Error("Database not configured");
 
@@ -448,6 +458,85 @@ export async function getCompanyByBmdId(bmdId: string) {
   });
 }
 
+// ==================== SYNC JOBS ====================
+
+export async function createSyncJob(data: {
+  source: string;
+  triggeredBy?: string;
+}) {
+  if (!db) throw new Error("Database not configured");
+
+  const [job] = await db.insert(syncJobs).values(data).returning();
+  return job;
+}
+
+export async function completeSyncJob(
+  jobId: string,
+  data: {
+    status: "completed" | "completed_with_errors" | "failed";
+    recordsProcessed?: number;
+    recordsCreated?: number;
+    recordsUpdated?: number;
+    recordsFailed?: number;
+    errorLog?: string | null;
+  }
+) {
+  if (!db) throw new Error("Database not configured");
+
+  const [updated] = await db.update(syncJobs)
+    .set({ ...data, completedAt: new Date() })
+    .where(eq(syncJobs.id, jobId))
+    .returning();
+
+  return updated;
+}
+
+export async function getSyncJobs(limit = 50) {
+  if (!db) throw new Error("Database not configured");
+
+  return db.query.syncJobs.findMany({
+    orderBy: [desc(syncJobs.startedAt)],
+    limit,
+  });
+}
+
+// ==================== PERIODS ====================
+
+export async function getDistinctPeriodsWithCounts(
+  filters: {
+    companyId?: string;
+    taskType?: "general" | "booking";
+  } = {}
+) {
+  if (!db) throw new Error("Database not configured");
+
+  const conditions = [];
+
+  if (filters.companyId) {
+    conditions.push(eq(tasks.companyId, filters.companyId));
+  }
+  if (filters.taskType) {
+    conditions.push(eq(tasks.taskType, filters.taskType));
+  }
+
+  const result = await db
+    .select({
+      period: tasks.period,
+      count: sql<number>`count(*)::int`,
+      openCount: sql<number>`count(*) filter (where ${tasks.status} != 'completed')::int`,
+    })
+    .from(tasks)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(tasks.period)
+    .orderBy(desc(tasks.period));
+
+  return result.filter(r => r.period !== null) as Array<{
+    period: string;
+    count: number;
+    openCount: number;
+  }>;
+}
+
 // ==================== STATS ====================
 
 export interface TaskStats {
@@ -462,7 +551,7 @@ export interface TaskStats {
 
 export async function getTaskStats(
   userId: string,
-  userRole: "customer" | "employee",
+  userRole: "admin" | "employee" | "customer",
   userCompanyId: string | null,
   filters: TaskFilters = {}
 ): Promise<TaskStats> {
@@ -480,6 +569,9 @@ export async function getTaskStats(
   // Period filter
   if (filters.period) {
     conditions.push(eq(tasks.period, filters.period));
+  }
+  if (filters.taskType) {
+    conditions.push(eq(tasks.taskType, filters.taskType));
   }
 
   const allTasks = await db.query.tasks.findMany({

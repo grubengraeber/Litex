@@ -88,8 +88,8 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Aufgabe bearbeiten</h1>
-        <p className="text-slate-500 mt-1">Ändern Sie die Details dieser Aufgabe</p>
+        <h1 className="text-2xl font-bold text-foreground">Aufgabe bearbeiten</h1>
+        <p className="text-muted-foreground mt-1">Ändern Sie die Details dieser Aufgabe</p>
       </div>
 
       {/* Form */}
@@ -100,7 +100,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Titel *
               </label>
               <Input
@@ -113,7 +113,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Beschreibung
               </label>
               <textarea
@@ -121,20 +121,20 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 placeholder="Beschreibung der Aufgabe..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Status
               </label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="open">Offen</option>
                 <option value="submitted">Eingereicht</option>
@@ -143,7 +143,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Fälligkeitsdatum
               </label>
               <Input
@@ -162,7 +162,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Buchungstext
               </label>
               <Input
@@ -175,7 +175,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Betrag (€)
                 </label>
                 <Input
@@ -188,7 +188,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Belegdatum
                 </label>
                 <Input
@@ -212,7 +212,7 @@ export default function TaskEditPage({ params }: { params: { id: string } }) {
             <Button type="button" variant="outline" onClick={handleCancel}>
               Abbrechen
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+            <Button type="submit">
               <Save className="w-4 h-4 mr-2" />
               Speichern
             </Button>

@@ -21,10 +21,10 @@ const NOTIFICATION_ICONS: Record<NotificationType, React.ElementType> = {
 };
 
 const NOTIFICATION_COLORS: Record<NotificationType, string> = {
-  message: "text-blue-500",
+  message: "text-primary",
   task: "text-green-500",
   warning: "text-amber-500",
-  info: "text-slate-500",
+  info: "text-muted-foreground",
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -79,7 +79,7 @@ export function NotificationsDropdown() {
           {unreadCount > 0 && (
             <button
               onClick={() => markAllAsRead()}
-              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              className="text-xs text-primary hover:text-foreground flex items-center gap-1"
             >
               <Check className="h-3 w-3" />
               Alle gelesen
@@ -89,11 +89,11 @@ export function NotificationsDropdown() {
 
         <div className="max-h-[350px] overflow-y-auto">
           {loading ? (
-            <div className="py-8 text-center text-sm text-slate-500">
+            <div className="py-8 text-center text-sm text-muted-foreground">
               Laden...
             </div>
           ) : notifications.length === 0 ? (
-            <div className="py-8 text-center text-sm text-slate-500">
+            <div className="py-8 text-center text-sm text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
               Keine Benachrichtigungen
             </div>
@@ -107,7 +107,7 @@ export function NotificationsDropdown() {
                   key={notification.id}
                   className={cn(
                     "flex items-start gap-3 p-3 cursor-pointer",
-                    !notification.isRead && "bg-blue-50/50"
+                    !notification.isRead && "bg-primary/5/50"
                   )}
                   onClick={() => handleNotificationClick(notification)}
                 >
@@ -123,13 +123,13 @@ export function NotificationsDropdown() {
                         {notification.title}
                       </span>
                       {!notification.isRead && (
-                        <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                        <span className="h-2 w-2 rounded-full bg-primary/50 shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {notification.message}
                     </p>
-                    <span className="text-[10px] text-slate-400 mt-1 block">
+                    <span className="text-[10px] text-muted-foreground mt-1 block">
                       {formatTimeAgo(notification.createdAt)}
                     </span>
                   </div>
@@ -143,7 +143,7 @@ export function NotificationsDropdown() {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="justify-center text-sm text-blue-600 cursor-pointer"
+              className="justify-center text-sm text-primary cursor-pointer"
               onClick={() => router.push("/notifications")}
             >
               Alle anzeigen

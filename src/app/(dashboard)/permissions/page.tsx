@@ -89,7 +89,7 @@ export default function PermissionsPage() {
   };
 
   const categoryColors: Record<string, string> = {
-    navigation: "bg-blue-100 text-blue-800",
+    navigation: "bg-primary/10 text-foreground",
     tasks: "bg-green-100 text-green-800",
     clients: "bg-purple-100 text-purple-800",
     users: "bg-orange-100 text-orange-800",
@@ -101,7 +101,7 @@ export default function PermissionsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Laden...</div>
+        <div className="text-muted-foreground">Laden...</div>
       </div>
     );
   }
@@ -111,8 +111,8 @@ export default function PermissionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Berechtigungen</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Berechtigungen</h1>
+          <p className="text-muted-foreground mt-1">
             {filteredPermissions.length} {filteredPermissions.length === 1 ? "Berechtigung" : "Berechtigungen"}
           </p>
         </div>
@@ -121,7 +121,7 @@ export default function PermissionsPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Berechtigungen durchsuchen..."
@@ -176,7 +176,7 @@ export default function PermissionsPage() {
                                 </Badge>
                               </div>
                             </TableCell>
-                            <TableCell className="text-slate-600">
+                            <TableCell className="text-muted-foreground">
                               {perm.description || "-"}
                             </TableCell>
                             <TableCell>
@@ -192,7 +192,7 @@ export default function PermissionsPage() {
                                     </Badge>
                                   ))
                                 ) : (
-                                  <span className="text-sm text-slate-400">
+                                  <span className="text-sm text-muted-foreground">
                                     Keiner Rolle zugewiesen
                                   </span>
                                 )}
@@ -213,13 +213,13 @@ export default function PermissionsPage() {
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <span className="text-2xl">🔒</span>
           </div>
-          <h3 className="text-lg font-medium text-slate-700">
+          <h3 className="text-lg font-medium text-foreground">
             Keine Berechtigungen gefunden
           </h3>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             {searchQuery
               ? "Versuchen Sie einen anderen Suchbegriff."
               : "Es wurden noch keine Berechtigungen definiert."}

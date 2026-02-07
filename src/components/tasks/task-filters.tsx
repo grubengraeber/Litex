@@ -58,7 +58,7 @@ export function TaskFiltersBar({
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Aufgaben durchsuchen..."
@@ -165,7 +165,7 @@ export function TaskFiltersBar({
       {/* Active Filters */}
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-slate-600">Aktive Filter:</span>
+          <span className="text-sm text-muted-foreground">Aktive Filter:</span>
           <Badge variant="secondary">
             {activeFilterCount} Filter
           </Badge>

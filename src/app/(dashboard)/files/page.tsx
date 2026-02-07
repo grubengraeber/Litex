@@ -6,8 +6,10 @@ import { ViewToggle } from "@/components/tasks/view-toggle";
 import { FilesDataTable } from "@/components/files/files-data-table";
 import { FilesGrid } from "@/components/files/files-grid";
 import { FilePreviewDialog } from "@/components/files/file-preview-dialog";
-import { Search } from "lucide-react";
+import { Search, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/lib/permissions-constants";
 import {
   Select,
   SelectContent,
@@ -39,12 +41,13 @@ interface FileRecord {
 }
 
 export default function FilesPage() {
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [view, setView] = useState<"grid" | "table">("grid");
-  const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
+  const [previewFile, setPreviewFile] = useState<(FileRecord & { taskId?: string }) | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // Load view preference
@@ -85,7 +88,10 @@ export default function FilesPage() {
   };
 
   const handlePreview = (file: FileRecord) => {
-    setPreviewFile(file);
+    setPreviewFile({
+      ...file,
+      taskId: file.task?.id,
+    });
     setPreviewOpen(true);
   };
 
@@ -101,10 +107,24 @@ export default function FilesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Dateien...</div>
+        <div className="text-muted-foreground">Lade Dateien...</div>
+      </div>
+    );
+  }
+
+  if (!hasPermission(PERMISSIONS.VIEW_FILES)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center px-4">
+        <FolderOpen className="w-16 h-16 text-muted-foreground mb-4" />
+        <h2 className="text-xl font-semibold text-foreground mb-2">
+          Kein Zugriff
+        </h2>
+        <p className="text-muted-foreground">
+          Sie haben keine Berechtigung, den Dateien-Bereich anzuzeigen.
+        </p>
       </div>
     );
   }
@@ -114,8 +134,8 @@ export default function FilesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dateien</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Dateien</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {filteredFiles.length} {filteredFiles.length === 1 ? "Datei" : "Dateien"}
           </p>
         </div>
@@ -125,7 +145,7 @@ export default function FilesPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Dateien durchsuchen..."
@@ -157,13 +177,13 @@ export default function FilesPage() {
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <span className="text-2xl">📁</span>
           </div>
-          <h3 className="text-lg font-medium text-slate-700">
+          <h3 className="text-lg font-medium text-foreground">
             Keine Dateien gefunden
           </h3>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             {search || statusFilter !== "all"
               ? "Versuchen Sie einen anderen Filter."
               : "Es wurden noch keine Dateien hochgeladen."}

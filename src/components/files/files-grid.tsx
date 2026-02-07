@@ -42,16 +42,16 @@ const statusLabels = {
   rejected: "Abgelehnt",
 };
 
-function getFileThumbnail(mimeType: string | null, storageKey: string) {
+function getFileThumbnail(mimeType: string | null, fileId: string) {
   if (mimeType?.startsWith("image/")) {
     return (
       <img
-        src={`/api/files/${storageKey}/download`}
+        src={`/api/files/${fileId}/download`}
         alt="Thumbnail"
         className="w-full h-full object-cover"
         onError={(e) => {
           e.currentTarget.style.display = "none";
-          e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100"><svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+          e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-muted"><svg class="w-12 h-12 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
         }}
       />
     );
@@ -66,8 +66,8 @@ function getFileThumbnail(mimeType: string | null, storageKey: string) {
   }
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-slate-100">
-      <FileIcon className="w-12 h-12 text-slate-400" />
+    <div className="w-full h-full flex items-center justify-center bg-muted">
+      <FileIcon className="w-12 h-12 text-muted-foreground" />
     </div>
   );
 }
@@ -89,14 +89,14 @@ export function FilesGrid({
               className="h-40 w-full overflow-hidden cursor-pointer"
               onClick={() => onPreview(file)}
             >
-              {getFileThumbnail(file.mimeType, file.storageKey)}
+              {getFileThumbnail(file.mimeType, file.id)}
             </div>
 
             {/* Info */}
             <div className="p-3 space-y-2">
               {/* Filename */}
               <h3
-                className="font-medium text-sm truncate cursor-pointer hover:text-blue-600"
+                className="font-medium text-sm truncate cursor-pointer hover:text-primary"
                 onClick={() => onPreview(file)}
                 title={file.fileName}
               >
@@ -105,13 +105,13 @@ export function FilesGrid({
 
               {/* Task */}
               {file.task && (
-                <div className="text-xs text-slate-500 truncate">
+                <div className="text-xs text-muted-foreground truncate">
                   {file.task.company.name}
                 </div>
               )}
 
               {/* Metadata */}
-              <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{file.fileSize ? formatFileSize(file.fileSize) : "-"}</span>
                 <span>
                   {formatDistanceToNow(new Date(file.createdAt), {
@@ -141,7 +141,7 @@ export function FilesGrid({
                     className="h-7 w-7 p-0"
                     asChild
                   >
-                    <a href={`/api/files/${file.storageKey}/download`} download>
+                    <a href={`/api/files/${file.id}/download`} download>
                       <Download className="w-3.5 h-3.5" />
                     </a>
                   </Button>

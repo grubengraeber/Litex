@@ -39,16 +39,16 @@ export function RolesGrid({
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  role.isSystem ? "bg-blue-100" : "bg-slate-100"
+                  role.isSystem ? "bg-primary/10" : "bg-muted"
                 }`}>
                   {role.isSystem ? (
-                    <ShieldAlert className="w-6 h-6 text-blue-600" />
+                    <ShieldAlert className="w-6 h-6 text-primary" />
                   ) : (
-                    <Shield className="w-6 h-6 text-slate-600" />
+                    <Shield className="w-6 h-6 text-muted-foreground" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-slate-900 truncate">{role.name}</h3>
+                  <h3 className="font-semibold text-foreground truncate">{role.name}</h3>
                   <Badge variant={role.isSystem ? "default" : "secondary"} className="mt-1 text-xs">
                     {role.isSystem ? "System" : "Custom"}
                   </Badge>
@@ -79,18 +79,18 @@ export function RolesGrid({
             </div>
 
             {role.description && (
-              <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                 {role.description}
               </p>
             )}
 
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-1 text-slate-500">
+                <div className="flex items-center gap-1 text-muted-foreground">
                   <Lock className="w-4 h-4" />
                   <span>Berechtigungen:</span>
                 </div>
-                <span className="font-medium text-slate-700">
+                <span className="font-medium text-foreground">
                   {role.permissions.length}
                 </span>
               </div>

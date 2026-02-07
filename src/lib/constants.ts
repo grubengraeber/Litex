@@ -23,7 +23,7 @@ export const TASK_STATUS = {
   },
   submitted: {
     label: "Eingereicht",
-    color: "bg-blue-100 text-blue-700",
+    color: "bg-primary/10 text-primary",
     description: "Vom Kunden eingereicht, wartet auf Prüfung",
   },
   completed: {
@@ -35,44 +35,49 @@ export const TASK_STATUS = {
 
 export type TaskStatus = keyof typeof TASK_STATUS;
 
-// Traffic light system (Ampel) - basiert auf ALTER in Tagen
-// 🟢 Grün: Neu (0-30 Tage)
-// 🟡 Gelb: >30 Tage
-// 🔴 Rot: >60 Tage
+// Traffic light system (Ampel) - basiert auf Bearbeitungsstatus und Fälligkeit
+// 🟡 Gelb: Nicht bearbeitet (Standardstatus)
+// 🟢 Grün: Vom Kunden bearbeitet
+// 🔴 Rot: Überfällig (dueDate überschritten)
 export const TRAFFIC_LIGHT_CONFIG = {
-  green: {
-    label: "Neu",
-    color: "bg-green-500",
-    bgLight: "bg-green-100",
-    text: "text-green-800",
-    description: "Weniger als 30 Tage alt",
-    maxDays: 30,
-  },
   yellow: {
-    label: "Warnung",
+    label: "Nicht bearbeitet",
     color: "bg-yellow-500",
     bgLight: "bg-yellow-100",
     text: "text-yellow-800",
-    description: "Älter als 30 Tage",
-    maxDays: 60,
+    description: "Noch nicht vom Kunden bearbeitet",
+  },
+  green: {
+    label: "Bearbeitet",
+    color: "bg-green-500",
+    bgLight: "bg-green-100",
+    text: "text-green-800",
+    description: "Vom Kunden bearbeitet",
   },
   red: {
-    label: "Dringend",
+    label: "Überfällig",
     color: "bg-red-500",
     bgLight: "bg-red-100",
     text: "text-red-800",
-    description: "Älter als 60 Tage",
-    maxDays: Infinity,
+    description: "Fälligkeitsdatum überschritten",
   },
 } as const;
 
 export type TrafficLight = keyof typeof TRAFFIC_LIGHT_CONFIG;
 
-// Calculate traffic light based on days since creation
-export function calculateTrafficLight(daysSinceCreation: number): TrafficLight {
-  if (daysSinceCreation <= 30) return "green";
-  if (daysSinceCreation <= 60) return "yellow";
-  return "red";
+// Calculate traffic light based on task status and due date
+export function calculateTrafficLight(
+  status: "open" | "submitted" | "completed",
+  dueDate: string | null
+): TrafficLight {
+  if (status === "completed") return "green";
+  if (status === "submitted") return "green";
+  if (dueDate) {
+    const now = new Date();
+    const due = new Date(dueDate);
+    if (now > due) return "red";
+  }
+  return "yellow";
 }
 
 // Traffic light sort priority (red first = highest priority)
@@ -81,6 +86,20 @@ export const TRAFFIC_LIGHT_PRIORITY: Record<TrafficLight, number> = {
   yellow: 1,
   green: 2,  // Niedrigste Priorität
 };
+
+// Task types
+export const TASK_TYPES = {
+  general: {
+    label: "Allgemeine Aufgabe",
+    description: "Manuell erstellte Aufgabe",
+  },
+  booking: {
+    label: "Ungeklärte Buchung",
+    description: "Importierte Buchung aus BMD",
+  },
+} as const;
+
+export type TaskType = keyof typeof TASK_TYPES;
 
 // User roles
 export type UserRole = "customer" | "employee";
@@ -131,6 +150,6 @@ export const FILTER_OPTIONS = [
   { key: "open", label: "Offen", icon: "Circle" },
   { key: "submitted", label: "Eingereicht", icon: "Clock" },
   { key: "completed", label: "Erledigt", icon: "CheckCircle2" },
-  { key: "red", label: "Dringend (>60 Tage)", icon: "AlertCircle", color: "text-red-500" },
-  { key: "yellow", label: "Warnung (>30 Tage)", icon: "AlertTriangle", color: "text-yellow-500" },
+  { key: "red", label: "Überfällig", icon: "AlertCircle", color: "text-red-500" },
+  { key: "yellow", label: "Nicht bearbeitet", icon: "AlertTriangle", color: "text-yellow-500" },
 ] as const;

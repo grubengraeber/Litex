@@ -162,7 +162,7 @@ export function InviteUserDialog({
                 <SelectItem value="employee">
                   <div>
                     <div className="font-medium">Mitarbeiter</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       Vollzugriff auf alle Funktionen
                     </div>
                   </div>
@@ -170,7 +170,7 @@ export function InviteUserDialog({
                 <SelectItem value="customer">
                   <div>
                     <div className="font-medium">Kunde</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       Eingeschränkter Zugriff auf eigene Daten
                     </div>
                   </div>

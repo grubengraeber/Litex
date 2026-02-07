@@ -113,7 +113,7 @@ export function DataTableToolbar<TData>({
               variant="outline"
               className={cn(
                 "h-10 justify-start text-left font-normal w-full sm:w-[240px]",
-                !dateRange && "text-slate-500"
+                !dateRange && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -165,7 +165,7 @@ export function DataTableToolbar<TData>({
       </div>
 
       {isFiltered && (
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-muted-foreground">
           {table.getFilteredRowModel().rows.length} von{" "}
           {table.getCoreRowModel().rows.length} Einträgen
         </div>

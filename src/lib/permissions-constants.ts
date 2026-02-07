@@ -52,8 +52,14 @@ export const PERMISSIONS = {
   DELETE_ROLES: "delete_roles",
   ASSIGN_PERMISSIONS: "assign_permissions",
 
+  // Chats
+  VIEW_CHATS: "view_chats",
+
   // Audit Logs
   VIEW_AUDIT_LOGS: "view_audit_logs",
+
+  // Files Navigation
+  VIEW_FILES: "view_files",
 } as const;
 
 export type PermissionName = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

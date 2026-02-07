@@ -44,13 +44,6 @@ export async function getUploadUrl(
     Bucket: BUCKET,
     Key: storageKey,
     ContentType: contentType,
-    // Security headers
-    ServerSideEncryption: "AES256", // Enable server-side encryption
-    // Metadata for tracking
-    Metadata: {
-      "uploaded-via": "litex-app",
-      "task-id": taskId,
-    },
   });
 
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });

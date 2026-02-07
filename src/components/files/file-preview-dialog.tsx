@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileX, Download } from "lucide-react";
 
@@ -9,10 +9,9 @@ interface FilePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: {
+    id: string;
     fileName: string;
     mimeType: string | null;
-    storageKey: string;
-    id?: string;
     taskId?: string;
   } | null;
 }
@@ -67,22 +66,22 @@ export function FilePreviewDialog({
   const isPDF = file.mimeType === "application/pdf";
   const isImage = file.mimeType?.startsWith("image/");
 
-  // Construct download URL - try file ID first, then fall back to storage key
+  // Construct download URL - use task files API if taskId available, otherwise file download API
   const fileUrl = file.id && file.taskId
     ? `/api/tasks/${file.taskId}/files?fileId=${file.id}`
-    : `/api/files/${file.storageKey}/download`;
+    : `/api/files/${file.id}/download`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] p-0">
+      <DialogContent className="max-w-4xl h-[80vh] p-0" aria-describedby={undefined}>
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="font-semibold truncate">{file.fileName}</h2>
+            <DialogTitle className="font-semibold truncate">{file.fileName}</DialogTitle>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-4">
+          <div className="flex-1 overflow-auto bg-muted flex items-center justify-center p-4">
             {isImage && !imageError && (
               <img
                 src={fileUrl}
@@ -93,11 +92,11 @@ export function FilePreviewDialog({
             )}
             {isImage && imageError && (
               <div className="text-center">
-                <FileX className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-700 mb-2">
+                <FileX className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   Bild konnte nicht geladen werden
                 </h3>
-                <p className="text-slate-500 mb-4">
+                <p className="text-muted-foreground mb-4">
                   Die Datei wurde möglicherweise verschoben oder gelöscht.
                 </p>
                 <Button asChild variant="outline">
@@ -119,11 +118,11 @@ export function FilePreviewDialog({
             )}
             {isPDF && pdfError && (
               <div className="text-center">
-                <FileX className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-700 mb-2">
+                <FileX className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   PDF konnte nicht geladen werden
                 </h3>
-                <p className="text-slate-500 mb-4">
+                <p className="text-muted-foreground mb-4">
                   Die Datei wurde möglicherweise verschoben oder gelöscht.
                 </p>
                 <Button asChild variant="outline">
@@ -136,7 +135,7 @@ export function FilePreviewDialog({
             )}
             {!isImage && !isPDF && (
               <div className="text-center">
-                <p className="text-slate-500 mb-4">
+                <p className="text-muted-foreground mb-4">
                   Vorschau für diesen Dateityp nicht verfügbar
                 </p>
                 <Button asChild>
@@ -151,7 +150,7 @@ export function FilePreviewDialog({
 
           {/* Footer */}
           <div className="p-4 border-t flex items-center justify-between">
-            <span className="text-sm text-slate-500">{file.mimeType || "Unbekannter Typ"}</span>
+            <span className="text-sm text-muted-foreground">{file.mimeType || "Unbekannter Typ"}</span>
             <Button asChild variant="outline">
               <a href={fileUrl} download={file.fileName}>
                 <Download className="w-4 h-4 mr-2" />

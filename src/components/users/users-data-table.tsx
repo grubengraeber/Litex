@@ -27,7 +27,7 @@ interface User {
   email: string;
   image: string | null;
   status: "pending" | "active" | "disabled";
-  role: "customer" | "employee";
+  role: "admin" | "employee" | "customer";
   companyId: string | null;
   createdAt: string;
   roles: Role[];
@@ -40,6 +40,7 @@ const statusConfig = {
 };
 
 const roleConfig = {
+  admin: { label: "Administrator", variant: "default" as const },
   employee: { label: "Mitarbeiter", variant: "default" as const },
   customer: { label: "Kunde", variant: "secondary" as const },
 };
@@ -71,7 +72,7 @@ export function UsersDataTable({
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
               <AvatarImage src={user.image || undefined} />
-              <AvatarFallback className="bg-blue-100 text-blue-600">
+              <AvatarFallback className="bg-primary/10 text-primary">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -79,7 +80,7 @@ export function UsersDataTable({
               <div className="font-medium">
                 {user.name || user.email.split("@")[0]}
               </div>
-              <div className="text-sm text-slate-500">{user.email}</div>
+              <div className="text-sm text-muted-foreground">{user.email}</div>
             </div>
           </div>
         );
@@ -93,14 +94,20 @@ export function UsersDataTable({
           title="Typ"
           filterType="select"
           filterOptions={[
+            { label: "Administrator", value: "admin" },
             { label: "Mitarbeiter", value: "employee" },
             { label: "Kunde", value: "customer" },
           ]}
         />
       ),
       cell: ({ row }) => {
-        const role = row.getValue("role") as keyof typeof roleConfig;
-        const config = roleConfig[role];
+        const role = row.getValue("role") as string;
+        const config = roleConfig[role as keyof typeof roleConfig];
+
+        if (!config) {
+          return <Badge variant="outline">{role}</Badge>;
+        }
+
         return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
@@ -138,7 +145,7 @@ export function UsersDataTable({
                 </Badge>
               ))
             ) : (
-              <span className="text-sm text-slate-400">Keine Rollen</span>
+              <span className="text-sm text-muted-foreground">Keine Rollen</span>
             )}
           </div>
         );

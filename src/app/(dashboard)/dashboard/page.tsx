@@ -3,13 +3,14 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { TaskCard, sortTasksByPriority } from "@/components/tasks/task-card";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MONTHS, type TaskStatus } from "@/lib/constants";
 import { useRole } from "@/hooks/use-role";
-import { Building2, ChevronDown, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
-import { fetchTasks, fetchCompanies } from "../actions";
+import { TrendingUp, Clock, CheckCircle2 } from "lucide-react";
+import { fetchTasks } from "../actions";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { useCompany } from "@/components/providers/company-provider";
 
 interface Task {
   id: string;
@@ -27,18 +28,11 @@ interface Task {
   files?: Array<{ id: string }>;
 }
 
-interface Company {
-  id: string;
-  name: string;
-}
-
 function DashboardContent() {
   const searchParams = useSearchParams();
   const { isEmployee, isCustomer } = useRole();
-  const [selectedCompany, setSelectedCompany] = useState("all");
-  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const { selectedCompanyId } = useCompany();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, green: 0, yellow: 0, red: 0 });
 
@@ -49,15 +43,6 @@ function DashboardContent() {
   const activeMonth =
     MONTHS.find((m) => m.key === activeMonthKey) || MONTHS[currentMonth];
 
-  // Fetch companies on mount (for employees)
-  useEffect(() => {
-    if (isEmployee) {
-      fetchCompanies().then((data) => {
-        setCompanies([{ id: "all", name: "Alle Mandanten" }, ...data]);
-      });
-    }
-  }, [isEmployee]);
-
   // Fetch tasks when filters change
   useEffect(() => {
     const loadTasks = async () => {
@@ -65,7 +50,7 @@ function DashboardContent() {
       try {
         const filters = {
           period: activeMonthKey,
-          companyId: selectedCompany !== "all" ? selectedCompany : undefined,
+          companyId: selectedCompanyId || undefined,
         };
 
         const [fetchedTasks] = await Promise.all([
@@ -90,7 +75,7 @@ function DashboardContent() {
     };
 
     loadTasks();
-  }, [activeMonthKey, selectedCompany]);
+  }, [activeMonthKey, selectedCompanyId]);
 
   // Filter and sort tasks - ONLY show urgent tasks (red and yellow)
   const filteredTasks = useMemo(() => {
@@ -128,9 +113,9 @@ function DashboardContent() {
     const green = tasks.filter(t => t.status !== "completed" && t.trafficLight === "green").length;
 
     return [
-      { name: ">60 Tage", value: red, color: "#ef4444" },
-      { name: "30-60 Tage", value: yellow, color: "#eab308" },
-      { name: "<30 Tage", value: green, color: "#22c55e" },
+      { name: "Überfällig", value: red, color: "#ef4444" },
+      { name: "Nicht bearbeitet", value: yellow, color: "#eab308" },
+      { name: "Bearbeitet", value: green, color: "#22c55e" },
     ];
   }, [tasks]);
 
@@ -141,7 +126,7 @@ function DashboardContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Aufgaben...</div>
+        <div className="text-muted-foreground">Lade Aufgaben...</div>
       </div>
     );
   }
@@ -152,56 +137,17 @@ function DashboardContent() {
       <div className="flex-1 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 break-words">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground break-words">
               DRINGENDE AUFGABEN
             </h1>
-            <p className="text-sm lg:text-base text-slate-500 mt-1">
+            <p className="text-sm lg:text-base text-muted-foreground mt-1">
               {isCustomer
-                ? "Aufgaben älter als 30 Tage"
-                : `${activeMonth.full} - Nur Aufgaben mit erhöhter Priorität (>30 Tage)`}
+                ? "Überfällige und nicht bearbeitete Aufgaben"
+                : `${activeMonth.full} - Überfällige und nicht bearbeitete Aufgaben`}
             </p>
           </div>
 
-          {/* Company Filter Dropdown (only for employees) */}
-          {isEmployee && (
-            <div className="relative w-full sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => setShowCompanyDropdown(!showCompanyDropdown)}
-                className="w-full sm:min-w-48 justify-between"
-              >
-                <div className="flex items-center min-w-0 flex-1">
-                  <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="truncate">
-                    {companies.find((c) => c.id === selectedCompany)?.name ||
-                      "Alle Mandanten"}
-                  </span>
-                </div>
-                <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
-              </Button>
-
-              {showCompanyDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border z-10">
-                  {companies.map((company) => (
-                    <button
-                      key={company.id}
-                      onClick={() => {
-                        setSelectedCompany(company.id);
-                        setShowCompanyDropdown(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg ${
-                        selectedCompany === company.id
-                          ? "bg-blue-50 text-blue-700"
-                          : ""
-                      }`}
-                    >
-                      {company.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Company selection now in sidebar */}
         </div>
 
         {/* Analytics Cards */}
@@ -210,14 +156,14 @@ function DashboardContent() {
           <Card className="md:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-medium flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
+                <TrendingUp className="w-4 h-4 text-primary" />
                 Aufgaben nach Alter
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="name"
                     fontSize={12}
@@ -231,8 +177,8 @@ function DashboardContent() {
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e2e8f0',
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
                   />
@@ -252,12 +198,12 @@ function DashboardContent() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-blue-600" />
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Offene Aufgaben</p>
-                      <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+                      <p className="text-sm text-muted-foreground">Offene Aufgaben</p>
+                      <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                     </div>
                   </div>
                 </div>
@@ -272,8 +218,8 @@ function DashboardContent() {
                       <CheckCircle2 className="w-5 h-5 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Erledigt</p>
-                      <p className="text-2xl font-bold text-slate-900">{completedThisMonth}</p>
+                      <p className="text-sm text-muted-foreground">Erledigt</p>
+                      <p className="text-2xl font-bold text-foreground">{completedThisMonth}</p>
                     </div>
                   </div>
                 </div>
@@ -285,37 +231,37 @@ function DashboardContent() {
         {/* Urgent Stats Bar - Only Red and Yellow */}
         <div className="flex flex-wrap gap-2 lg:gap-4 mb-6">
           <div
-            className="flex items-center gap-2 px-4 py-3 bg-red-50 rounded-lg border-2 border-red-200"
-            title="Dringend (>60 Tage)"
+            className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/30 rounded-lg border-2 border-red-200 dark:border-red-800"
+            title="Überfällig"
           >
             <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-sm lg:text-base text-red-700 font-medium">
-              Dringend (&gt;60d):
+            <span className="text-sm lg:text-base text-red-700 dark:text-red-400 font-medium">
+              Überfällig:
             </span>
-            <span className="font-bold text-lg lg:text-xl text-red-700">
+            <span className="font-bold text-lg lg:text-xl text-red-700 dark:text-red-400">
               {stats.red}
             </span>
           </div>
           <div
-            className="flex items-center gap-2 px-4 py-3 bg-yellow-50 rounded-lg border-2 border-yellow-200"
-            title="Warnung (>30 Tage)"
+            className="flex items-center gap-2 px-4 py-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border-2 border-yellow-200 dark:border-yellow-800"
+            title="Nicht bearbeitet"
           >
             <span className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span className="text-sm lg:text-base text-yellow-700 font-medium">
-              Warnung (&gt;30d):
+            <span className="text-sm lg:text-base text-yellow-700 dark:text-yellow-400 font-medium">
+              Nicht bearbeitet:
             </span>
-            <span className="font-bold text-lg lg:text-xl text-yellow-700">
+            <span className="font-bold text-lg lg:text-xl text-yellow-700 dark:text-yellow-400">
               {stats.yellow}
             </span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg ml-auto">
-            <span className="text-xs lg:text-sm text-slate-600">
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg ml-auto">
+            <span className="text-xs lg:text-sm text-muted-foreground">
               Offene gesamt:
             </span>
             <span className="font-semibold text-sm lg:text-base">
               {stats.total}
             </span>
-            <span className="text-xs text-slate-500">({stats.green} neu)</span>
+            <span className="text-xs text-muted-foreground">({stats.green} bearbeitet)</span>
           </div>
         </div>
 
@@ -341,24 +287,29 @@ function DashboardContent() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-950/30 rounded-full flex items-center justify-center mb-4">
               <span className="text-2xl">✓</span>
             </div>
-            <h3 className="text-lg font-medium text-green-700">
+            <h3 className="text-lg font-medium text-green-700 dark:text-green-400">
               Keine dringenden Aufgaben!
             </h3>
-            <p className="text-slate-500 mt-1">
-              {isEmployee && selectedCompany !== "all"
+            <p className="text-muted-foreground mt-1">
+              {isEmployee && selectedCompanyId
                 ? `Keine Aufgaben älter als 30 Tage für diesen Mandanten.`
                 : `Alle Aufgaben sind aktuell (< 30 Tage alt).`}
             </p>
             {stats.green > 0 && (
-              <p className="text-sm text-slate-600 mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 {stats.green} neue Aufgabe{stats.green > 1 ? "n" : ""} verfügbar
               </p>
             )}
           </div>
         )}
+
+        {/* Activity Feed */}
+        <div className="mt-8">
+          <ActivityFeed />
+        </div>
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import {
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { NotificationsDropdown } from "./notifications-dropdown";
 import { UserMenu } from "./user-menu";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface HeaderProps {
   onMonthChange?: (month: string) => void;
@@ -81,7 +82,7 @@ export function Header({ onMonthChange }: HeaderProps) {
                     onClick={() => handleMonthClick(month.key)}
                     className={cn(
                       "cursor-pointer",
-                      activeMonthKey === month.key && "bg-blue-50 text-blue-600"
+                      activeMonthKey === month.key && "bg-primary/5 text-primary"
                     )}
                   >
                     {month.full}
@@ -109,8 +110,8 @@ export function Header({ onMonthChange }: HeaderProps) {
                 className={cn(
                   "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
                   activeMonthKey === month.key
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
                 )}
               >
                 <Calendar className="w-3.5 h-3.5" />
@@ -125,13 +126,16 @@ export function Header({ onMonthChange }: HeaderProps) {
       <div className="flex items-center gap-2 ml-auto shrink-0">
         {/* Search - hidden on mobile */}
         <div className="relative hidden sm:block">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Suchen..."
             className="pl-8 w-40 h-8"
           />
         </div>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Notifications Bell */}
         <NotificationsDropdown />

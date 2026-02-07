@@ -98,7 +98,7 @@ export function CreateChatDialog({ open, onOpenChange }: CreateChatDialogProps) 
         <div className="space-y-4 flex-1 min-h-0 flex flex-col">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Aufgaben durchsuchen..."
@@ -112,12 +112,12 @@ export function CreateChatDialog({ open, onOpenChange }: CreateChatDialogProps) 
           <div className="flex-1 overflow-y-auto border rounded-lg">
             {loading ? (
               <div className="flex items-center justify-center h-40">
-                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-center px-4">
-                <MessageSquare className="w-12 h-12 text-slate-300 mb-2" />
-                <p className="text-sm text-slate-500">
+                <MessageSquare className="w-12 h-12 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
                   {searchQuery
                     ? "Keine Aufgaben gefunden"
                     : "Alle Aufgaben haben bereits Kommentare"}
@@ -135,8 +135,8 @@ export function CreateChatDialog({ open, onOpenChange }: CreateChatDialogProps) 
                       key={task.id}
                       onClick={() => setSelectedTaskId(task.id)}
                       className={cn(
-                        "p-4 cursor-pointer transition-colors hover:bg-slate-50",
-                        isSelected && "bg-blue-50 border-l-4 border-l-blue-600"
+                        "p-4 cursor-pointer transition-colors hover:bg-muted",
+                        isSelected && "bg-primary/5 border-l-4 border-l-primary"
                       )}
                     >
                       <div className="space-y-2">
@@ -144,14 +144,14 @@ export function CreateChatDialog({ open, onOpenChange }: CreateChatDialogProps) 
                           <h3
                             className={cn(
                               "font-medium text-sm",
-                              isSelected ? "text-blue-900" : "text-slate-900"
+                              isSelected ? "text-foreground" : "text-foreground"
                             )}
                           >
                             {task.bookingText || "Keine Beschreibung"}
                           </h3>
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Building2 className="w-3 h-3" />
                           <span>{task.company.name}</span>
                           {task.period && (
@@ -193,7 +193,7 @@ export function CreateChatDialog({ open, onOpenChange }: CreateChatDialogProps) 
           <Button
             onClick={handleCreateChat}
             disabled={!selectedTaskId}
-            className="bg-blue-600 hover:bg-blue-700"
+           
           >
             <MessageSquare className="w-4 h-4 mr-2" />
             Chat erstellen

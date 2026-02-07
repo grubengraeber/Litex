@@ -213,7 +213,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Aufgabe...</div>
+        <div className="text-muted-foreground">Lade Aufgabe...</div>
       </div>
     );
   }
@@ -221,8 +221,8 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
   if (!task) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <h2 className="text-xl font-semibold text-slate-700">Aufgabe nicht gefunden</h2>
-        <p className="text-slate-500 mt-2">Die angeforderte Aufgabe existiert nicht.</p>
+        <h2 className="text-xl font-semibold text-foreground">Aufgabe nicht gefunden</h2>
+        <p className="text-muted-foreground mt-2">Die angeforderte Aufgabe existiert nicht.</p>
         <Link href="/tasks" className="mt-4">
           <Button>Zurück zur Übersicht</Button>
         </Link>
@@ -280,19 +280,19 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               </Badge>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-foreground">
             {task.bookingText || "Keine Beschreibung"}
           </h1>
         </div>
 
         {/* ACTION BUTTONS based on role and status */}
         {task.status !== "completed" && (
-          <Card className="border-2 border-blue-200 bg-blue-50">
+          <Card className="border-2 border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium text-blue-900">Aktionen</h3>
-                  <p className="text-sm text-blue-700">
+                  <h3 className="font-medium text-foreground">Aktionen</h3>
+                  <p className="text-sm text-primary">
                     {task.status === "open" && isCustomer && "Bereit zum Einreichen?"}
                     {task.status === "open" && isEmployee && "Warte auf Einreichung durch Kunden"}
                     {task.status === "submitted" && isEmployee && "Eingereicht vom Kunden - bereit zur Prüfung"}
@@ -302,7 +302,7 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
                 <div className="flex gap-2">
                   {/* CUSTOMER: Einreichen Button */}
                   {isCustomer && task.status === "open" && permissions.canSubmitTask && (
-                    <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={handleSubmit}>
                       <Send className="w-4 h-4 mr-2" />
                       Einreichen
                     </Button>
@@ -332,9 +332,9 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
 
               {/* Return Dialog with required comment */}
               {showReturnDialog && (
-                <div className="mt-4 p-4 bg-white rounded-lg border">
+                <div className="mt-4 p-4 bg-card rounded-lg border">
                   <h4 className="font-medium mb-2">Zurück an Kunde senden</h4>
-                  <p className="text-sm text-slate-500 mb-3">
+                  <p className="text-sm text-muted-foreground mb-3">
                     Bitte geben Sie einen Kommentar ein (Pflichtfeld):
                   </p>
                   <textarea
@@ -387,24 +387,24 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
-                <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Building2 className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Mandant</div>
-                  <div className="text-sm text-slate-500">{task.company.name}</div>
+                  <div className="text-sm text-muted-foreground">{task.company.name}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Erstellt am</div>
-                  <div className="text-sm text-slate-500">{formatDate(task.createdAt)}</div>
+                  <div className="text-sm text-muted-foreground">{formatDate(task.createdAt)}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Zeitraum</div>
-                  <div className="text-sm text-slate-500">{task.period || "Nicht zugewiesen"}</div>
+                  <div className="text-sm text-muted-foreground">{task.period || "Nicht zugewiesen"}</div>
                 </div>
               </div>
             </CardContent>
@@ -417,26 +417,26 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
-                <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
+                <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Buchungstext</div>
-                  <div className="text-sm text-slate-500">{task.bookingText || "Nicht vorhanden"}</div>
+                  <div className="text-sm text-muted-foreground">{task.bookingText || "Nicht vorhanden"}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Euro className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Euro className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Betrag</div>
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-muted-foreground">
                     € {task.amount || "0.00"}
                   </div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-slate-400 mt-0.5" />
+                <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <div className="text-sm font-medium">Belegdatum</div>
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-muted-foreground">
                     {task.documentDate ? formatDate(task.documentDate) : "Nicht vorhanden"}
                   </div>
                 </div>
@@ -458,14 +458,14 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
               {task.files.map((file) => (
                 <div
                   key={file.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-slate-50 rounded-lg hover:bg-slate-100"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-muted rounded-lg hover:bg-muted/80"
                 >
                   {/* File info */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <FileText className="w-5 h-5 text-blue-600 shrink-0" />
+                    <FileText className="w-5 h-5 text-primary shrink-0" />
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{file.fileName}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-muted-foreground">
                         {file.fileSize && formatFileSize(file.fileSize)} • {file.user.name || "Unbekannt"} • {formatDate(file.createdAt)}
                       </div>
                     </div>
@@ -489,29 +489,29 @@ export default function TaskDetailPage({ params }: { params: { id: string } }) {
         </Card>
 
         {/* Metadata */}
-        <div className="text-xs text-slate-400 flex gap-4">
+        <div className="text-xs text-muted-foreground flex gap-4">
           <span>Erstellt: {formatDate(task.createdAt)}</span>
           <span>Aktualisiert: {formatDate(task.updatedAt)}</span>
           <span>Alter: {daysSinceCreation} Tage</span>
         </div>
 
         {/* Chat Link */}
-        <Card className="border-2 border-blue-200 bg-blue-50">
+        <Card className="border-2 border-primary/20 bg-primary/5">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                   <MessageSquare className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-blue-900">Kommentare & Chat</h3>
-                  <p className="text-sm text-blue-700">
+                  <h3 className="font-medium text-foreground">Kommentare & Chat</h3>
+                  <p className="text-sm text-primary">
                     Zur Kommunikation über diese Aufgabe
                   </p>
                 </div>
               </div>
               <Link href={`/chats/${id}`}>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Chat öffnen
                 </Button>

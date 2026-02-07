@@ -53,7 +53,7 @@ export function FilesDataTable({
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <FileIcon className="w-4 h-4 text-slate-400" />
+          <FileIcon className="w-4 h-4 text-muted-foreground" />
           <span className="font-medium">{row.getValue("fileName")}</span>
         </div>
       ),
@@ -96,7 +96,7 @@ export function FilesDataTable({
             {row.original.task?.bookingText || "Keine Aufgabe"}
           </div>
           {row.original.task && (
-            <div className="text-xs text-slate-500 truncate">
+            <div className="text-xs text-muted-foreground truncate">
               {row.original.task.company.name}
             </div>
           )}
@@ -157,7 +157,7 @@ export function FilesDataTable({
               size="sm"
               asChild
             >
-              <a href={`/api/files/${file.storageKey}/download`} download>
+              <a href={`/api/files/${file.id}/download`} download>
                 <Download className="w-4 h-4" />
               </a>
             </Button>

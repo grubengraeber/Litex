@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { upsertTaskFromImport, getCompanyByBmdId, createCompany } from "@/db/queries";
+import { upsertTaskFromImport, getCompanyByBmdId, createCompany, createSyncJob, completeSyncJob } from "@/db/queries";
 import { parse } from "csv-parse/sync";
+import { calculateDefaultDueDate } from "@/lib/due-date-utils";
 
 // Validate cron secret
 function validateCronSecret(request: NextRequest): boolean {
@@ -67,6 +68,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create sync job record
+    const syncJob = await createSyncJob({ source: "csv_import" });
+
     const results = {
       processed: 0,
       created: 0,
@@ -85,7 +89,7 @@ export async function POST(request: NextRequest) {
 
         // Find or create company
         let company = await getCompanyByBmdId(row.bmd_client_id);
-        
+
         if (!company) {
           // Create company
           company = await createCompany({
@@ -95,7 +99,10 @@ export async function POST(request: NextRequest) {
           results.companiesCreated++;
         }
 
-        // Upsert task
+        // Calculate default due date if not provided and period exists
+        const dueDate = row.due_date || (row.period ? calculateDefaultDueDate(row.period) : undefined);
+
+        // Upsert task as booking type
         const { created } = await upsertTaskFromImport({
           bmdBookingId: row.bmd_booking_id,
           companyId: company.id,
@@ -104,7 +111,8 @@ export async function POST(request: NextRequest) {
           documentDate: row.document_date,
           bookingDate: row.booking_date,
           period: row.period,
-          dueDate: row.due_date,
+          dueDate,
+          taskType: "booking",
         });
 
         results.processed++;
@@ -119,8 +127,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Complete sync job
+    await completeSyncJob(syncJob.id, {
+      status: results.errors.length > 0 && results.processed === 0 ? "failed" : "completed",
+      recordsProcessed: results.processed,
+      recordsCreated: results.created,
+      recordsUpdated: results.updated,
+      recordsFailed: results.errors.length,
+      errorLog: results.errors.length > 0 ? JSON.stringify(results.errors) : undefined,
+    });
+
     return NextResponse.json({
       success: true,
+      syncJobId: syncJob.id,
       ...results,
     });
   } catch (error) {

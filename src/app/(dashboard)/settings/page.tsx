@@ -15,8 +15,12 @@ import {
   Shield,
   Palette,
   Save,
-  Loader2
+  Loader2,
+  Sun,
+  Moon,
+  Monitor
 } from "lucide-react";
+import { useTheme } from "@/components/providers/theme-provider";
 
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {
   if (name) {
@@ -36,6 +40,7 @@ function SettingsContent() {
   const { data: session } = useSession();
   const { isEmployee } = useRole();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -102,7 +107,7 @@ function SettingsContent() {
   if (!session?.user) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -116,8 +121,8 @@ function SettingsContent() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Einstellungen</h1>
-        <p className="text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Einstellungen</h1>
+        <p className="text-muted-foreground mt-1">
           Verwalten Sie Ihre Kontoeinstellungen und Präferenzen
         </p>
       </div>
@@ -126,7 +131,7 @@ function SettingsContent() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-slate-400" />
+            <User className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-base">Profil</CardTitle>
           </div>
           <CardDescription>
@@ -139,7 +144,7 @@ function SettingsContent() {
             <div className="relative">
               <Avatar className="w-20 h-20">
                 <AvatarImage src={session.user.image || undefined} />
-                <AvatarFallback className="text-2xl bg-blue-100 text-blue-600">
+                <AvatarFallback className="text-2xl bg-primary/10 text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -147,7 +152,7 @@ function SettingsContent() {
             <div>
               <div className="font-medium">{session.user.name || "Benutzer"}</div>
               {companyName && (
-                <div className="text-sm text-slate-500">{companyName}</div>
+                <div className="text-sm text-muted-foreground">{companyName}</div>
               )}
               <Badge variant={isEmployee ? "default" : "outline"} className="mt-1">
                 {isEmployee ? "Mitarbeiter" : "Kunde"}
@@ -158,7 +163,7 @@ function SettingsContent() {
           {/* Form */}
           <div className="grid gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Name
               </label>
               <Input
@@ -169,7 +174,7 @@ function SettingsContent() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 E-Mail
               </label>
               <Input
@@ -179,9 +184,9 @@ function SettingsContent() {
                 onChange={handleChange}
                 placeholder="ihre@email.at"
                 disabled
-                className="bg-slate-50"
+                className="bg-muted"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 E-Mail kann nicht geändert werden
               </p>
             </div>
@@ -190,7 +195,7 @@ function SettingsContent() {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-blue-600 hover:bg-blue-700"
+           
           >
             {isSaving ? (
               <>
@@ -211,7 +216,7 @@ function SettingsContent() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-slate-400" />
+            <Bell className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-base">Benachrichtigungen</CardTitle>
           </div>
           <CardDescription>
@@ -222,14 +227,14 @@ function SettingsContent() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-sm">Neue Aufgaben</div>
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 E-Mail bei neuen zugewiesenen Aufgaben
               </div>
             </div>
             <button
               onClick={() => handleNotificationChange("emailTasks")}
               className={`w-11 h-6 rounded-full transition-colors ${
-                notifications.emailTasks ? "bg-blue-600" : "bg-slate-200"
+                notifications.emailTasks ? "bg-primary" : "bg-muted"
               }`}
             >
               <div
@@ -243,14 +248,14 @@ function SettingsContent() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-sm">Kommentare</div>
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 E-Mail bei neuen Kommentaren zu Ihren Aufgaben
               </div>
             </div>
             <button
               onClick={() => handleNotificationChange("emailComments")}
               className={`w-11 h-6 rounded-full transition-colors ${
-                notifications.emailComments ? "bg-blue-600" : "bg-slate-200"
+                notifications.emailComments ? "bg-primary" : "bg-muted"
               }`}
             >
               <div
@@ -264,14 +269,14 @@ function SettingsContent() {
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-sm">Erinnerungen</div>
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 E-Mail-Erinnerungen vor Fälligkeitsterminen
               </div>
             </div>
             <button
               onClick={() => handleNotificationChange("emailReminders")}
               className={`w-11 h-6 rounded-full transition-colors ${
-                notifications.emailReminders ? "bg-blue-600" : "bg-slate-200"
+                notifications.emailReminders ? "bg-primary" : "bg-muted"
               }`}
             >
               <div
@@ -288,7 +293,7 @@ function SettingsContent() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-slate-400" />
+            <Shield className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-base">Sicherheit</CardTitle>
           </div>
           <CardDescription>
@@ -296,9 +301,9 @@ function SettingsContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="p-4 bg-slate-50 rounded-lg">
+          <div className="p-4 bg-muted rounded-lg">
             <div className="font-medium text-sm">Magic Link Authentifizierung</div>
-            <div className="text-sm text-slate-500 mt-1">
+            <div className="text-sm text-muted-foreground mt-1">
               Sie melden sich mit einem sicheren 6-stelligen Code an, der an {session.user.email} gesendet wird.
             </div>
           </div>
@@ -309,24 +314,48 @@ function SettingsContent() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-slate-400" />
+            <Palette className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-base">Darstellung</CardTitle>
           </div>
           <CardDescription>
             Passen Sie das Erscheinungsbild an
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium text-sm">Dunkelmodus</div>
-              <div className="text-sm text-slate-500">
-                Dunkles Farbschema verwenden
-              </div>
-            </div>
-            <Button variant="outline" size="sm">
-              Bald verfügbar
-            </Button>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setTheme("light")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                theme === "light"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-muted-foreground"
+              }`}
+            >
+              <Sun className="w-5 h-5" />
+              <span className="text-sm font-medium">Hell</span>
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                theme === "dark"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-muted-foreground"
+              }`}
+            >
+              <Moon className="w-5 h-5" />
+              <span className="text-sm font-medium">Dunkel</span>
+            </button>
+            <button
+              onClick={() => setTheme("system")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                theme === "system"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-muted-foreground"
+              }`}
+            >
+              <Monitor className="w-5 h-5" />
+              <span className="text-sm font-medium">System</span>
+            </button>
           </div>
         </CardContent>
       </Card>

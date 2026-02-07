@@ -67,7 +67,7 @@ interface User {
   email: string;
   image: string | null;
   status: "pending" | "active" | "disabled";
-  role: "customer" | "employee";
+  role: "admin" | "employee" | "customer";
   companyId: string | null;
   createdAt: string;
   roles: Role[];
@@ -269,6 +269,7 @@ export default function UsersPage() {
   };
 
   const roleTypeConfig = {
+    admin: { label: "Admin", variant: "default" as const },
     employee: { label: "Mitarbeiter", variant: "default" as const },
     customer: { label: "Kunde", variant: "secondary" as const },
   };
@@ -276,7 +277,7 @@ export default function UsersPage() {
   if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Laden...</div>
+        <div className="text-muted-foreground">Laden...</div>
       </div>
     );
   }
@@ -286,8 +287,8 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-slate-900">Benutzer-Verwaltung</h1>
-          <p className="text-slate-500 mt-1">{filteredUsers.length} Benutzer</p>
+          <h1 className="text-2xl font-bold text-foreground">Benutzer-Verwaltung</h1>
+          <p className="text-muted-foreground mt-1">{filteredUsers.length} Benutzer</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <ViewToggle view={view} onViewChange={handleViewChange} />
@@ -298,7 +299,7 @@ export default function UsersPage() {
                 <InviteUserDialog
                   buttonText="Benutzer einladen"
                   buttonVariant="default"
-                  buttonClassName="bg-blue-600 hover:bg-blue-700"
+                 
                   onInviteSuccess={fetchUsers}
                 />
               </div>
@@ -306,7 +307,7 @@ export default function UsersPage() {
               <div className="sm:hidden">
                 <InviteUserDialog
                   buttonVariant="default"
-                  buttonClassName="bg-blue-600 hover:bg-blue-700"
+                 
                   iconOnly
                   onInviteSuccess={fetchUsers}
                 />
@@ -318,7 +319,7 @@ export default function UsersPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Benutzer durchsuchen..."
@@ -364,7 +365,7 @@ export default function UsersPage() {
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={user.image || undefined} />
-                          <AvatarFallback className="bg-blue-100 text-blue-600">
+                          <AvatarFallback className="bg-primary/10 text-primary">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
@@ -372,7 +373,7 @@ export default function UsersPage() {
                           <div className="font-medium">
                             {user.name || user.email.split("@")[0]}
                           </div>
-                          <div className="text-sm text-slate-500">
+                          <div className="text-sm text-muted-foreground">
                             {user.email}
                           </div>
                         </div>
@@ -408,7 +409,7 @@ export default function UsersPage() {
                           </div>
                         ))}
                         {user.roles.length === 0 && (
-                          <span className="text-sm text-slate-400">
+                          <span className="text-sm text-muted-foreground">
                             Keine Rollen
                           </span>
                         )}
@@ -505,7 +506,7 @@ export default function UsersPage() {
                           <ShieldCheck className="w-4 h-4" />
                           {role.name}
                           {role.description && (
-                            <span className="text-slate-500 text-sm">
+                            <span className="text-muted-foreground text-sm">
                               - {role.description}
                             </span>
                           )}

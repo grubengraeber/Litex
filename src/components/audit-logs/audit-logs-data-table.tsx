@@ -123,7 +123,7 @@ export function AuditLogsDataTable({
                   </TableRow>
                   {row.getIsExpanded() && (
                     <TableRow>
-                      <TableCell colSpan={columns.length} className="bg-slate-50 p-4">
+                      <TableCell colSpan={columns.length} className="bg-muted p-4">
                         <ExpandedRowContent log={row.original} />
                       </TableCell>
                     </TableRow>
@@ -145,7 +145,7 @@ export function AuditLogsDataTable({
       </div>
 
       <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-muted-foreground">
           {table.getFilteredRowModel().rows.length} Einträge
         </div>
         <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export function AuditLogsDataTable({
             <ChevronLeft className="w-4 h-4 mr-1" />
             Zurück
           </Button>
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-muted-foreground">
             Seite {table.getState().pagination.pageIndex + 1} von{" "}
             {table.getPageCount()}
           </div>
@@ -194,8 +194,8 @@ function ExpandedRowContent({ log }: { log: AuditLog }) {
 
       {log.userAgent && (
         <div>
-          <div className="font-semibold text-slate-700 mb-1">User Agent:</div>
-          <div className="text-slate-600 bg-white p-3 rounded border">
+          <div className="font-semibold text-foreground mb-1">User Agent:</div>
+          <div className="text-muted-foreground bg-card p-3 rounded border">
             {log.userAgent}
           </div>
         </div>
@@ -203,8 +203,8 @@ function ExpandedRowContent({ log }: { log: AuditLog }) {
 
       {metadata && (
         <div>
-          <div className="font-semibold text-slate-700 mb-1">Metadata:</div>
-          <pre className="text-xs bg-white p-3 rounded border overflow-x-auto">
+          <div className="font-semibold text-foreground mb-1">Metadata:</div>
+          <pre className="text-xs bg-card p-3 rounded border overflow-x-auto">
             {JSON.stringify(metadata, null, 2)}
           </pre>
         </div>
@@ -212,24 +212,24 @@ function ExpandedRowContent({ log }: { log: AuditLog }) {
 
       {changes && (
         <div>
-          <div className="font-semibold text-slate-700 mb-1">Änderungen:</div>
+          <div className="font-semibold text-foreground mb-1">Änderungen:</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {changes.before && (
               <div>
-                <div className="text-xs font-medium text-slate-500 mb-1">
+                <div className="text-xs font-medium text-muted-foreground mb-1">
                   Vorher:
                 </div>
-                <pre className="text-xs bg-white p-3 rounded border overflow-x-auto">
+                <pre className="text-xs bg-card p-3 rounded border overflow-x-auto">
                   {JSON.stringify(changes.before, null, 2)}
                 </pre>
               </div>
             )}
             {changes.after && (
               <div>
-                <div className="text-xs font-medium text-slate-500 mb-1">
+                <div className="text-xs font-medium text-muted-foreground mb-1">
                   Nachher:
                 </div>
-                <pre className="text-xs bg-white p-3 rounded border overflow-x-auto">
+                <pre className="text-xs bg-card p-3 rounded border overflow-x-auto">
                   {JSON.stringify(changes.after, null, 2)}
                 </pre>
               </div>

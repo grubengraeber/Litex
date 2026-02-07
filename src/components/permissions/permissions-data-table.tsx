@@ -25,7 +25,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const categoryColors: Record<string, string> = {
-  navigation: "bg-blue-100 text-blue-800 border-blue-200",
+  navigation: "bg-primary/10 text-foreground border-primary/20",
   tasks: "bg-green-100 text-green-800 border-green-200",
   clients: "bg-purple-100 text-purple-800 border-purple-200",
   users: "bg-orange-100 text-orange-800 border-orange-200",
@@ -80,7 +80,7 @@ export function PermissionsDataTable({
         <ColumnHeader column={column} title="Beschreibung" filterType="text" />
       ),
       cell: ({ row }) => (
-        <div className="text-slate-600 max-w-md">
+        <div className="text-muted-foreground max-w-md">
           {row.getValue("description") || "-"}
         </div>
       ),
@@ -99,7 +99,7 @@ export function PermissionsDataTable({
                 </Badge>
               ))
             ) : (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted-foreground">
                 Keine Rolle zugewiesen
               </span>
             )}

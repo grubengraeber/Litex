@@ -83,16 +83,19 @@ export const GET = withAuditLog(async (request: NextRequest) => {
     // List users with their roles
     let usersList;
 
-    if (!canViewAllUsers) {
+    if (canViewAllUsers) {
+      // Users with VIEW_ALL_USERS can see all users or filter by company
+      if (companyId) {
+        usersList = await getUsersByCompany(companyId);
+      } else {
+        usersList = await getAllUsers();
+      }
+    } else {
       // Users without permission can only see users from their company
       if (!session.user.companyId) {
         return NextResponse.json({ users: [] });
       }
       usersList = await getUsersByCompany(session.user.companyId);
-    } else if (companyId) {
-      usersList = await getUsersByCompany(companyId);
-    } else {
-      usersList = await getAllUsers();
     }
 
     // Add roles to each user

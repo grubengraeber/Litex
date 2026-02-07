@@ -220,7 +220,7 @@ async function seed() {
         {
           name: "Admin User",
           email: "admin@litex.com",
-          role: "employee",
+          role: "admin",
           status: "active",
           emailVerified: new Date(),
         },
@@ -291,10 +291,15 @@ async function seed() {
       return date;
     };
 
-    const calculateTrafficLight = (daysAgo: number): "green" | "yellow" | "red" => {
-      if (daysAgo <= 30) return "green";
-      if (daysAgo <= 60) return "yellow";
-      return "red";
+    const calculateTrafficLight = (
+      status: "open" | "submitted" | "completed",
+      dueDate: string | null
+    ): "green" | "yellow" | "red" => {
+      if (status === "completed" || status === "submitted") return "green";
+      if (!dueDate) return "yellow";
+      const due = new Date(dueDate);
+      if (due < new Date()) return "red";
+      return "yellow";
     };
 
     const taskData = [
@@ -469,8 +474,11 @@ async function seed() {
             bookingDate: task.bookingDate,
             period: task.period,
             status: task.status,
-            trafficLight: calculateTrafficLight(task.daysAgo),
             dueDate: dueDate.toISOString().split("T")[0],
+            trafficLight: calculateTrafficLight(
+              task.status as "open" | "submitted" | "completed",
+              dueDate.toISOString().split("T")[0]
+            ),
             createdAt,
             completedAt: task.status === "completed" ? new Date() : null,
             completedBy: task.status === "completed" ? employee1.id : null,

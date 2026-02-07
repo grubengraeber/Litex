@@ -285,7 +285,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Chat...</div>
+        <div className="text-muted-foreground">Lade Chat...</div>
       </div>
     );
   }
@@ -293,7 +293,7 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
   if (!task) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <h2 className="text-xl font-semibold text-slate-700">Aufgabe nicht gefunden</h2>
+        <h2 className="text-xl font-semibold text-foreground">Aufgabe nicht gefunden</h2>
         <Link href="/chats" className="mt-4">
           <Button>Zurück zu Chats</Button>
         </Link>
@@ -329,14 +329,14 @@ export default function ChatDetailPage({ params }: { params: { taskId: string } 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`w-3 h-3 rounded-full ${trafficConfig?.color || "bg-green-500"}`} />
-                  <Badge className={`${statusConfig?.color || "bg-slate-100 text-slate-700"} border-0`}>
+                  <Badge className={`${statusConfig?.color || "bg-muted text-foreground"} border-0`}>
                     {statusConfig?.label || "Unbekannt"}
                   </Badge>
                 </div>
-                <h1 className="text-xl font-bold text-slate-900 mb-2">
+                <h1 className="text-xl font-bold text-foreground mb-2">
                   {task.bookingText || "Keine Beschreibung"}
                 </h1>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Building2 className="w-4 h-4" />
                     <span>{task.company.name}</span>

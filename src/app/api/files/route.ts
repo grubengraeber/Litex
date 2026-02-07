@@ -80,6 +80,7 @@ export const GET = withAuditLog(async () => {
       fileName: file.fileName,
       mimeType: file.mimeType,
       fileSize: file.fileSize,
+      storageKey: file.storageKey,
       status: file.status,
       createdAt: file.createdAt,
       user: {

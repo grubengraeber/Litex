@@ -139,13 +139,13 @@ function CompaniesContent() {
   if (!isEmployee) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
           <span className="text-2xl">🔒</span>
         </div>
-        <h3 className="text-lg font-medium text-slate-700">
+        <h3 className="text-lg font-medium text-foreground">
           Kein Zugriff
         </h3>
-        <p className="text-slate-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Diese Seite ist nur für Mitarbeiter verfügbar.
         </p>
         <Link href="/dashboard">
@@ -158,7 +158,7 @@ function CompaniesContent() {
   if (loading || permissionsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-slate-500">Lade Mandanten...</div>
+        <div className="text-muted-foreground">Lade Mandanten...</div>
       </div>
     );
   }
@@ -168,8 +168,8 @@ function CompaniesContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Mandanten</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Mandanten</h1>
+          <p className="text-muted-foreground mt-1">
             {filteredCompanies.length} {filteredCompanies.length === 1 ? "Mandant" : "Mandanten"}
           </p>
         </div>
@@ -177,7 +177,7 @@ function CompaniesContent() {
           <ViewToggle view={view} onViewChange={handleViewChange} />
           {canCreateCompany && (
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
+             
               onClick={handleCreate}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -189,7 +189,7 @@ function CompaniesContent() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           type="search"
           placeholder="Mandanten durchsuchen..."
@@ -208,12 +208,12 @@ function CompaniesContent() {
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                        <Building2 className="w-6 h-6 text-slate-600" />
+                      <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                        <Building2 className="w-6 h-6 text-muted-foreground" />
                       </div>
                       <div>
                         <h3 className="font-semibold">{company.name}</h3>
-                        <span className="text-sm text-slate-500">
+                        <span className="text-sm text-muted-foreground">
                           {company.bmdId || "-"}
                         </span>
                       </div>
@@ -238,12 +238,12 @@ function CompaniesContent() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Users className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="w-4 h-4 text-muted-foreground" />
                       <span>{company.userCount || 0} Benutzer</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <FileText className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
                       <span>{company.taskCount || 0} Aufgaben</span>
                     </div>
                   </div>
@@ -257,7 +257,7 @@ function CompaniesContent() {
                         </>
                       ) : (
                         <>
-                          <XCircle className="w-4 h-4 text-slate-400" />
+                          <XCircle className="w-4 h-4 text-muted-foreground" />
                           <Badge variant="outline" className="text-xs">Inaktiv</Badge>
                         </>
                       )}
@@ -281,13 +281,13 @@ function CompaniesContent() {
         )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <span className="text-2xl">🏢</span>
           </div>
-          <h3 className="text-lg font-medium text-slate-700">
+          <h3 className="text-lg font-medium text-foreground">
             Keine Mandanten gefunden
           </h3>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             {searchQuery
               ? "Versuchen Sie einen anderen Suchbegriff."
               : "Es wurden noch keine Mandanten angelegt."}

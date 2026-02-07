@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,43 +55,53 @@ export default function LoginPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-white p-4">
+        <Card className="w-full max-w-md shadow-lg border-0">
           <CardHeader className="text-center">
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/logos/countable-logo-0.png"
+                alt="Countable Logo"
+                width={160}
+                height={60}
+                priority
+                className="object-contain"
+              />
+            </div>
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <CardTitle className="text-2xl">E-Mail gesendet</CardTitle>
+            <CardTitle className="text-2xl font-bold">E-Mail gesendet</CardTitle>
             <CardDescription className="text-base mt-2">
               Wir haben einen Anmelde-Link an <strong>{email}</strong> gesendet.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg text-center">
-              <p className="text-sm text-blue-700">
+            <div className="bg-primary/10 p-4 rounded-lg text-center border border-primary/20">
+              <p className="text-sm text-foreground">
                 <strong>Alternativ:</strong> Nutzen Sie den 6-stelligen Code aus der E-Mail
               </p>
             </div>
-            
-            <Button 
-              variant="default" 
-              className="w-full bg-blue-600 hover:bg-blue-700"
+
+            <Button
+              variant="default"
+              className="w-full"
               onClick={handleUseCode}
             >
               <Mail className="w-4 h-4 mr-2" />
               Code eingeben
             </Button>
-            
+
             <div className="text-center">
-              <button 
+              <button
                 onClick={() => setSent(false)}
-                className="text-sm text-slate-500 hover:text-slate-700"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Andere E-Mail verwenden
               </button>
             </div>
 
-            <p className="text-xs text-slate-400 text-center">
+            <p className="text-xs text-muted-foreground text-center">
               Der Link ist 15 Minuten gültig. Session: 30 Tage.
             </p>
           </CardContent>
@@ -100,24 +111,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">L</span>
-            </div>
-            <span className="font-semibold text-2xl">Litex</span>
+    <div className="min-h-screen flex items-center justify-center bg-white p-4">
+      <Card className="w-full max-w-md shadow-lg border-0">
+        <CardHeader className="text-center space-y-6">
+          <div className="flex justify-center">
+            <Image
+              src="/logos/countable-logo-0.png"
+              alt="Countable Logo"
+              width={180}
+              height={70}
+              priority
+              className="object-contain"
+            />
           </div>
-          <CardTitle className="text-2xl">Willkommen</CardTitle>
-          <CardDescription>
-            Melden Sie sich mit Ihrer E-Mail-Adresse an
-          </CardDescription>
+          <div>
+            <CardTitle className="text-2xl font-bold">Willkommen</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Melden Sie sich mit Ihrer E-Mail-Adresse an
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <label htmlFor="email" className="text-sm font-medium text-foreground">
                 E-Mail-Adresse
               </label>
               <Input
@@ -130,9 +147,14 @@ export default function LoginPage() {
                 disabled={isLoading}
                 autoComplete="email"
                 autoFocus
+                className="h-11"
               />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full h-11 font-semibold"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -149,19 +171,19 @@ export default function LoginPage() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-400">Passwortlos</span>
+              <span className="bg-white px-2 text-muted-foreground font-medium">Passwortlos</span>
             </div>
           </div>
 
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-muted-foreground text-center">
             Sie erhalten einen Magic Link und einen 6-stelligen Code per E-Mail.
             Kein Passwort erforderlich.
           </p>
 
-          <p className="text-xs text-slate-400 text-center mt-4">
+          <p className="text-xs text-muted-foreground text-center mt-6 font-medium">
             ALB Steuerberatung • Klientenportal
           </p>
         </CardContent>

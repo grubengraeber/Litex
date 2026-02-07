@@ -63,7 +63,7 @@ export function ColumnHeader<TData, TValue>({
             >
               <Filter
                 className={`h-4 w-4 ${
-                  filterValue ? "text-blue-600" : "opacity-50"
+                  filterValue ? "text-primary" : "opacity-50"
                 }`}
               />
             </Button>

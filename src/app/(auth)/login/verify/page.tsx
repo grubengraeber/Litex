@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,19 +123,31 @@ function VerifyContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <KeyRound className="w-8 h-8 text-blue-600" />
+    <div className="min-h-screen flex items-center justify-center bg-white p-4">
+      <Card className="w-full max-w-md shadow-lg border-0">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Image
+              src="/logos/countable-logo-0.png"
+              alt="Countable Logo"
+              width={160}
+              height={60}
+              priority
+              className="object-contain"
+            />
           </div>
-          <CardTitle className="text-2xl">Code eingeben</CardTitle>
-          <CardDescription className="text-base mt-2">
-            Geben Sie den 6-stelligen Code aus Ihrer E-Mail ein
-            {email && (
-              <span className="block mt-1 text-slate-600">{email}</span>
-            )}
-          </CardDescription>
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+            <KeyRound className="w-8 h-8 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-bold">Code eingeben</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Geben Sie den 6-stelligen Code aus Ihrer E-Mail ein
+              {email && (
+                <span className="block mt-1 text-foreground font-medium">{email}</span>
+              )}
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
@@ -151,21 +164,21 @@ function VerifyContent() {
                   onChange={(e) => handleChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   disabled={isLoading}
-                  className={`w-12 h-14 text-center text-2xl font-semibold border rounded-lg 
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                    disabled:bg-slate-100 disabled:cursor-not-allowed
-                    ${error ? "border-red-300 bg-red-50" : "border-slate-200"}`}
+                  className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-lg
+                    focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+                    disabled:bg-muted disabled:cursor-not-allowed transition-colors
+                    ${error ? "border-red-300 bg-red-50" : "border-border"}`}
                 />
               ))}
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 text-center">{error}</p>
+              <p className="text-sm text-red-600 text-center font-medium">{error}</p>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700" 
+            <Button
+              type="submit"
+              className="w-full h-11 font-semibold"
               disabled={isLoading || code.some(d => !d)}
             >
               {isLoading ? (
@@ -183,32 +196,32 @@ function VerifyContent() {
           </form>
 
           <div className="mt-6 text-center space-y-3">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Keinen Code erhalten?{" "}
-              <button 
+              <button
                 onClick={handleResend}
                 disabled={resendCooldown > 0}
-                className={`font-medium ${
-                  resendCooldown > 0 
-                    ? "text-slate-400 cursor-not-allowed" 
-                    : "text-blue-600 hover:underline"
+                className={`font-medium transition-colors ${
+                  resendCooldown > 0
+                    ? "text-muted-foreground cursor-not-allowed"
+                    : "text-foreground hover:text-primary"
                 }`}
               >
                 {resendCooldown > 0 ? `Erneut senden (${resendCooldown}s)` : "Erneut senden"}
               </button>
             </p>
 
-            <Link 
-              href="/login" 
-              className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700"
+            <Link
+              href="/login"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Zurück zur Anmeldung
             </Link>
           </div>
 
-          <p className="text-xs text-slate-400 text-center mt-6">
-            Demo-Code: <span className="font-mono bg-slate-100 px-1 rounded">123456</span>
+          <p className="text-xs text-muted-foreground text-center mt-6">
+            Demo-Code: <span className="font-mono bg-muted px-2 py-1 rounded font-medium">123456</span>
           </p>
         </CardContent>
       </Card>
@@ -219,8 +232,8 @@ function VerifyContent() {
 export default function VerifyPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     }>
       <VerifyContent />

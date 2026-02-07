@@ -44,9 +44,11 @@ const trafficLightColors = {
 export function TasksDataTable({
   tasks,
   showCompanyColumn = false,
+  onRowClick,
 }: {
   tasks: Task[];
   showCompanyColumn?: boolean;
+  onRowClick?: (taskId: string) => void;
 }) {
   const router = useRouter();
 
@@ -59,9 +61,9 @@ export function TasksDataTable({
           title="Ampel"
           filterType="select"
           filterOptions={[
-            { label: "Neu (0-30 Tage)", value: "green" },
-            { label: "Warnung (>30 Tage)", value: "yellow" },
-            { label: "Dringend (>60 Tage)", value: "red" },
+            { label: "Bearbeitet", value: "green" },
+            { label: "Nicht bearbeitet", value: "yellow" },
+            { label: "Überfällig", value: "red" },
           ]}
         />
       ),
@@ -176,7 +178,7 @@ export function TasksDataTable({
       columns={columns}
       data={tasks}
       pageSize={20}
-      onRowClick={(task) => router.push(`/tasks/${task.id}`)}
+      onRowClick={(task) => onRowClick ? onRowClick(task.id) : router.push(`/tasks/${task.id}`)}
     />
   );
 }

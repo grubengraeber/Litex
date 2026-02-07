@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, MessageCircle, Paperclip } from "lucide-react";
-import { 
-  TRAFFIC_LIGHT_CONFIG, 
+import {
+  TRAFFIC_LIGHT_CONFIG,
   TASK_STATUS,
   calculateTrafficLight,
-  type TaskStatus 
+  type TaskStatus,
 } from "@/lib/constants";
 
 interface TaskCardProps {
@@ -43,11 +43,11 @@ export function TaskCard({
   companyName,
   amount,
 }: TaskCardProps) {
-  // Calculate traffic light based on age
+  // Calculate traffic light based on status and due date
   const daysSinceCreation = Math.floor(
     (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
   );
-  const trafficLight = calculateTrafficLight(daysSinceCreation);
+  const trafficLight = calculateTrafficLight(status, dueDate !== "Offen" ? dueDate : null);
   const trafficConfig = TRAFFIC_LIGHT_CONFIG[trafficLight];
   const statusConfig = TASK_STATUS[status];
   
@@ -69,7 +69,7 @@ export function TaskCard({
                 {statusConfig.label}
               </Badge>
             </div>
-            <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center gap-2 text-muted-foreground">
               {fileCount > 0 && (
                 <div className="flex items-center gap-1 text-sm" title={`${fileCount} Anhänge`}>
                   <Paperclip className="w-4 h-4" />
@@ -86,20 +86,20 @@ export function TaskCard({
           </div>
           <h3 className="font-semibold text-lg mt-2">{title}</h3>
           {companyName && (
-            <span className="text-sm text-blue-600">{companyName}</span>
+            <span className="text-sm text-primary">{companyName}</span>
           )}
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500 mb-4 line-clamp-2">{description}</p>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{description}</p>
           
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
               <span>Fällig: {dueDate}</span>
             </div>
             
             {amount && (
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-foreground">
                 € {amount}
               </span>
             )}
@@ -113,7 +113,7 @@ export function TaskCard({
             
             <Avatar className="w-8 h-8">
               <AvatarImage src={assignee.avatar} alt={assignee.name} />
-              <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs">
                 {assignee.initials}
               </AvatarFallback>
             </Avatar>

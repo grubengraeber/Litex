@@ -111,7 +111,7 @@ export function FileUpload({
   };
 
   const handleUpload = async () => {
-    const validFiles = files.filter((f) => f.status === "pending");
+    const validFiles = files.filter((f) => f.status === "pending" || f.status === "error");
     if (validFiles.length === 0 || !onUpload) return;
 
     setIsUploading(true);
@@ -119,22 +119,13 @@ export function FileUpload({
     // Update status to uploading
     setFiles((prev) =>
       prev.map((f) =>
-        f.status === "pending" ? { ...f, status: "uploading" as const } : f
+        f.status === "pending" || f.status === "error"
+          ? { ...f, status: "uploading" as const, progress: 0, errorMessage: undefined }
+          : f
       )
     );
 
     try {
-      // Simulate upload progress
-      for (let progress = 0; progress <= 100; progress += 20) {
-        await new Promise((r) => setTimeout(r, 200));
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.status === "uploading" ? { ...f, progress } : f
-          )
-        );
-      }
-
-      // Pass the actual File objects, not FileWithPreview objects
       await onUpload(validFiles.map(f => f.file));
 
       // Mark as success
@@ -158,6 +149,8 @@ export function FileUpload({
   };
 
   const pendingCount = files.filter((f) => f.status === "pending").length;
+  const errorCount = files.filter((f) => f.status === "error" && !f.errorMessage?.includes("zu groß") && !f.errorMessage?.includes("Nur PDF")).length;
+  const uploadableCount = pendingCount + errorCount;
   const hasFiles = files.length > 0;
 
   return (
@@ -171,8 +164,8 @@ export function FileUpload({
         className={cn(
           "relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
           isDragging
-            ? "border-blue-500 bg-blue-50"
-            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-muted-foreground/30 hover:bg-muted/50",
           disabled && "opacity-50 cursor-not-allowed"
         )}
       >
@@ -189,24 +182,24 @@ export function FileUpload({
         <div className="flex flex-col items-center gap-2">
           <div className={cn(
             "w-12 h-12 rounded-full flex items-center justify-center",
-            isDragging ? "bg-blue-100" : "bg-slate-100"
+            isDragging ? "bg-primary/10" : "bg-muted"
           )}>
             <Upload className={cn(
               "w-6 h-6",
-              isDragging ? "text-blue-600" : "text-slate-400"
+              isDragging ? "text-primary" : "text-muted-foreground"
             )} />
           </div>
-          
+
           <div>
-            <p className="font-medium text-slate-700">
+            <p className="font-medium text-foreground">
               {isDragging ? "Dateien hier ablegen" : "Dateien hochladen"}
             </p>
-            <p className="text-sm text-slate-500 mt-1">
-              Drag & Drop oder <span className="text-blue-600">durchsuchen</span>
+            <p className="text-sm text-muted-foreground mt-1">
+              Drag & Drop oder <span className="text-primary">durchsuchen</span>
             </p>
           </div>
 
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             PDF und Bilder • Max. {maxSizeMB} MB pro Datei
           </p>
         </div>
@@ -220,10 +213,10 @@ export function FileUpload({
               key={file.id}
               className={cn(
                 "flex items-center gap-3 p-3 rounded-lg border",
-                file.status === "error" && "border-red-200 bg-red-50",
-                file.status === "success" && "border-green-200 bg-green-50",
-                file.status === "pending" && "border-slate-200 bg-slate-50",
-                file.status === "uploading" && "border-blue-200 bg-blue-50"
+                file.status === "error" && "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30",
+                file.status === "success" && "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30",
+                file.status === "pending" && "border-border bg-muted/50",
+                file.status === "uploading" && "border-primary/20 bg-primary/5"
               )}
             >
               {/* Preview/Icon */}
@@ -235,15 +228,15 @@ export function FileUpload({
                   className="w-10 h-10 object-cover rounded"
                 />
               ) : (
-                <div className="w-10 h-10 bg-slate-100 rounded flex items-center justify-center">
-                  <File className="w-5 h-5 text-slate-400" />
+                <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
+                  <File className="w-5 h-5 text-muted-foreground" />
                 </div>
               )}
 
               {/* File Info */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{file.file.name}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {(file.file.size / 1024).toFixed(0)} KB
                   {file.status === "uploading" && ` • ${file.progress}%`}
                   {file.errorMessage && (
@@ -253,9 +246,9 @@ export function FileUpload({
                 
                 {/* Progress Bar */}
                 {file.status === "uploading" && (
-                  <div className="w-full h-1 bg-blue-100 rounded-full mt-1 overflow-hidden">
+                  <div className="w-full h-1 bg-primary/10 rounded-full mt-1 overflow-hidden">
                     <div
-                      className="h-full bg-blue-600 transition-all"
+                      className="h-full bg-primary transition-all"
                       style={{ width: `${file.progress}%` }}
                     />
                   </div>
@@ -270,14 +263,14 @@ export function FileUpload({
                 <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
               )}
               {file.status === "uploading" && (
-                <Loader2 className="w-5 h-5 text-blue-600 animate-spin shrink-0" />
+                <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
               )}
               {file.status === "pending" && (
                 <button
                   onClick={(e) => { e.stopPropagation(); removeFile(file.id); }}
-                  className="p-1 hover:bg-slate-200 rounded"
+                  className="p-1 hover:bg-muted rounded"
                 >
-                  <X className="w-4 h-4 text-slate-400" />
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               )}
             </div>
@@ -286,28 +279,33 @@ export function FileUpload({
       )}
 
       {/* Upload Button */}
-      {pendingCount > 0 && (
+      {uploadableCount > 0 && (
         <Button
           onClick={handleUpload}
           disabled={isUploading || disabled}
-          className="w-full bg-blue-600 hover:bg-blue-700"
+          className="w-full"
         >
           {isUploading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Wird hochgeladen...
             </>
+          ) : errorCount > 0 && pendingCount === 0 ? (
+            <>
+              <Upload className="w-4 h-4 mr-2" />
+              {errorCount} {errorCount === 1 ? "Datei" : "Dateien"} erneut versuchen
+            </>
           ) : (
             <>
               <Upload className="w-4 h-4 mr-2" />
-              {pendingCount} {pendingCount === 1 ? "Datei" : "Dateien"} hochladen
+              {uploadableCount} {uploadableCount === 1 ? "Datei" : "Dateien"} hochladen
             </>
           )}
         </Button>
       )}
 
       {/* Info */}
-      <p className="text-xs text-slate-400 text-center">
+      <p className="text-xs text-muted-foreground text-center">
         Belege werden zur Freigabe durch einen Mitarbeiter eingereicht
       </p>
     </div>
